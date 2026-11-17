@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KristaLab — Struktur Kristal, Pita &amp; DOS (v3: light mode)</title>
+<title>KristaLab — Struktur Kristal, Pita & DOS</title>
 <style>
 :root{--bg:#f3f5f8;--pn:#ffffff;--pn2:#f6f8fa;--ln:#d5dbe3;--tx:#1f2328;--mu:#57606a;--ac:#0969da;--ac2:#cf222e;--ok:#1a7f37;--wa:#e3b341;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 *{box-sizing:border-box}
@@ -122,6 +122,31 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
 .ptleg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--mu)}
 .ptleg .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid #d5dbe3}
 .sw.n{background:#d9f3e1}.sw.p{background:#fbe0e6}.sw.i{background:#dce8fb}.sw.site{outline:2px solid #e3b341;background:#f6f8fa}.sw.sel{background:#1f6feb}.sw.off{background:#f6f8fa;opacity:.35}
+.stale{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#fff4d6;border-bottom:1px solid #e3c26b;color:#5c4400;padding:7px 12px;font-size:13px;border-radius:10px 10px 0 0}
+.badge.warn{background:#fff4d6;color:#7a5600;border:1px solid #e3c26b}
+details.qed{border:1px solid var(--ln);border-radius:8px;padding:6px 10px;background:var(--pn2)}
+details.qed summary{font-weight:600;color:var(--tx)}
+.qgrid{margin-top:6px;grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+table.qat{border-collapse:collapse;width:100%;font-size:13px}
+table.qat th{color:var(--mu);font-weight:600;text-align:left;padding:3px 4px;font-size:12px}
+table.qat td{padding:2px 3px}
+table.qat td.n{color:var(--mu);width:26px;text-align:right}
+table.qat input{width:100%;font:12.5px var(--mono)}
+textarea.code#edIn{min-height:300px}
+.modal{position:fixed;inset:0;background:rgba(31,35,40,.45);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal[hidden]{display:none}
+.mbox{background:#fff;border-radius:12px;max-width:980px;width:100%;max-height:92vh;display:flex;flex-direction:column;gap:8px;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mbody{overflow:auto;flex:1;border:1px solid var(--ln);border-radius:8px}
+.mfoot{border-top:1px solid var(--ln);padding-top:8px}
+table.deft{border-collapse:collapse;width:100%;font-size:12.5px}
+table.deft th{position:sticky;top:0;background:#eef2f7;text-align:left;padding:6px 8px;font-size:12px;color:var(--mu)}
+table.deft td{border-bottom:1px solid #e5e9ef;padding:5px 8px;vertical-align:top}
+table.deft td.v{font-family:var(--mono);font-size:12px;max-width:300px;white-space:pre-wrap;word-break:break-word}
+table.deft tr.sec td{background:#f6f8fa;font-weight:700;color:#0b4fa8}
+table.deft tr.chg td{background:#fff8e1}
+table.deft .ok{color:#1a7f37;font-size:12px}
+.qed input.chg,.qed select.chg{border-color:#d4a72c;background:#fff8e1}
 </style>
 </head>
 <body>
@@ -130,6 +155,8 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
   <span class="sub">Struktur kristal · pita energi · DOS · format input pw.x / dos.x</span>
   <span class="sp"></span>
   <select id="preset" title="Contoh input"></select>
+  <button id="btnDefaults" title="Tampilkan dan pulihkan nilai default/standar">↺ Nilai default</button>
+  <button id="btnReport" title="Unduh laporan lengkap dalam format Word">📄 Rekap hasil (.docx)</button>
   <button id="btnRunAll" class="pri">▶ Jalankan semua (scf → bands → dos)</button>
   <button id="btnStop" disabled>■ Hentikan</button>
 </header>
@@ -141,17 +168,43 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
       <button class="tab" data-p="pBuild">Builder struktur</button>
       <button class="tab" data-p="pDope">🧪 Doping</button>
       <button class="tab" data-p="pBands">bands</button>
+      <button class="tab" data-p="pOpt">🌈 Optik</button>
       <button class="tab" data-p="pDos">nscf + dos.x</button>
       <button class="tab" data-p="pSet">Pengaturan</button>
     </div>
     <div class="pane on" id="pIn">
       <div class="row">
         <button id="btnScf" class="pri">▶ Jalankan pw.x (scf)</button>
+        <span class="badge warn" id="runBadge" hidden title="Input berbeda dari perhitungan terakhir">✎ diedit, belum dijalankan</span>
         <button id="btnOpen">📂 Buka .in</button>
         <input type="file" id="fileIn" accept=".in,.pwi,.txt,.inp" hidden>
         <button id="btnCopyIn" class="sm">Salin</button>
+        <button id="btnReport2" class="sm">📄 Rekap .docx</button>
+        <button id="btnDefaults2" class="sm">↺ Default</button>
         <span class="hint" id="parseInfo"></span>
       </div>
+      <details class="qed" open><summary>✎ Editor cepat (tersinkron dengan teks pw.x di bawah)</summary>
+        <div class="grid2 qgrid">
+          <label class="fld">prefix<input type="text" id="qPrefix"></label>
+          <label class="fld">ibrav<select id="qIbrav"><option value="0">0 · bebas (CELL_PARAMETERS)</option><option value="1">1 · kubik sederhana</option><option value="2">2 · fcc</option><option value="3">3 · bcc</option><option value="-3">−3 · bcc (alt.)</option><option value="4">4 · heksagonal</option><option value="6">6 · tetragonal</option><option value="7">7 · bct</option><option value="8">8 · ortorombik</option></select></label>
+          <label class="fld">celldm(1) a (bohr)<input type="number" step="any" id="qCd1"></label>
+          <label class="fld">a (Å)<input type="number" step="any" id="qA"></label>
+          <label class="fld" id="qCd2w">celldm(2) b/a<input type="number" step="any" id="qCd2"></label>
+          <label class="fld" id="qCd3w">celldm(3) c/a<input type="number" step="any" id="qCd3"></label>
+          <label class="fld">ecutwfc (Ry)<input type="number" step="any" id="qEcut"></label>
+          <label class="fld">nbnd (kosong = otomatis)<input type="number" id="qNbnd" min="1"></label>
+          <label class="fld">occupations<select id="qOcc"><option value="fixed">fixed (isolator)</option><option value="smearing">smearing (logam/doping)</option></select></label>
+          <label class="fld" id="qDgw">degauss (Ry)<input type="number" step="any" id="qDg"></label>
+        </div>
+        <div class="hint" id="qCellNote" hidden>ibrav = 0: vektor sel diedit langsung di kartu CELL_PARAMETERS pada teks.</div>
+        <div class="row" style="margin-top:6px"><span class="hint">K_POINTS automatic</span>
+          <input type="number" id="qK1" min="1" style="width:56px"><input type="number" id="qK2" min="1" style="width:56px"><input type="number" id="qK3" min="1" style="width:56px">
+          <span class="hint">geser</span><input type="number" id="qS1" min="0" max="1" style="width:50px"><input type="number" id="qS2" min="0" max="1" style="width:50px"><input type="number" id="qS3" min="0" max="1" style="width:50px">
+          <span class="hint" id="qKNote" hidden>(kartu K_POINTS di teks bukan "automatic"; mengubah angka ini akan menggantinya)</span></div>
+        <div class="row" style="margin-top:6px"><span class="hint">ATOMIC_POSITIONS</span><select id="qUnit"><option value="crystal">crystal</option><option value="alat">alat</option><option value="angstrom">angstrom</option><option value="bohr">bohr</option></select><span class="hint" id="qAtCount"></span><button class="sm" id="qAdd">+ Tambah atom</button></div>
+        <div class="tblwrap" style="max-height:190px;overflow:auto"><table class="qat"><thead><tr><th>#</th><th>Atom</th><th>x</th><th>y</th><th>z</th><th></th></tr></thead><tbody id="qAtoms"></tbody></table></div>
+        <div class="hint">Setiap perubahan di sini langsung menulis ulang teks pw.x, dan sebaliknya. Tombol ▶ selalu memakai teks terbaru. Editan Anda juga disimpan di browser ini.</div>
+      </details>
       <textarea class="code" id="edIn" spellcheck="false"></textarea>
       <div class="hint">Namelist &amp;CONTROL, &amp;SYSTEM, &amp;ELECTRONS dan kartu ATOMIC_SPECIES, ATOMIC_POSITIONS {alat|bohr|angstrom|crystal}, K_POINTS {automatic|gamma|tpiba|crystal|tpiba_b|crystal_b}, CELL_PARAMETERS {alat|bohr|angstrom}. Didukung ibrav 0, 1, 2, 3, −3, 4, 6, 7, 8, dengan <code>celldm(i)</code> atau <code>A, B, C</code>.</div>
     </div>
@@ -273,6 +326,26 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
       <div class="hint">dos.x: <code>degauss</code> dalam Ry, <code>Emin</code>, <code>Emax</code>, dan <code>DeltaE</code> dalam eV (sama seperti dos.x). Pelebaran Gaussian (ngauss=0).</div>
     </div>
 
+
+    <div class="pane" id="pOpt">
+      <div class="row"><button id="btnOpt" class="pri">▶ Hitung sifat optik</button><span class="hint">Memakai struktur dari input pw.x saat ini.</span></div>
+      <h3>Pengaturan perhitungan optik</h3>
+      <div class="grid2">
+        <label class="fld">Grid-k optik (n n n)<input type="text" id="oK" value="10 10 10"></label>
+        <label class="fld">nbnd optik (kosong = otomatis)<input type="number" id="oNb" min="2"></label>
+        <label class="fld">Energi foton maks (eV)<input type="number" id="oEmax" value="20" step="1"></label>
+        <label class="fld">Langkah ΔE (eV)<input type="number" id="oDe" value="0.02" step="0.005"></label>
+        <label class="fld">Pelebaran η (eV)<input type="number" id="oEta" value="0.1" step="0.01"></label>
+        <label class="fld">Koreksi celah / scissor (eV)<input type="number" id="oSc" value="0" step="0.05"></label>
+        <label class="fld">Redaman Drude γ (eV)<input type="number" id="oGam" value="0.1" step="0.01"></label>
+      </div>
+      <div class="note">Metode: fungsi dielektrik dihitung dari transisi antarpita vertikal (k sama) dengan elemen matriks momentum ⟨c|p|v⟩ yang dihitung dari fungsi gelombang (pendekatan RPA tanpa efek medan lokal dan eksiton):
+      <br>ε₂(ω) = (4π²e²/m²ω²V) Σ<sub>k,v,c</sub> |⟨c|p|v⟩|² δ(E<sub>c</sub> − E<sub>v</sub> − ħω)
+      <br>ε₁ diperoleh dari relasi Kramers–Kronig. Untuk logam dan semikonduktor terdoping ditambahkan suku Drude intrapita, dengan frekuensi plasma ω<sub>p</sub> dihitung dari kecepatan pita di E<sub>F</sub>. Dari ε diturunkan indeks bias n, koefisien pemadaman k, koefisien serapan α = 4πk/λ, dan reflektivitas R.
+      <br><b>Scissor</b> menggeser pita konduksi untuk mengoreksi celah, praktik yang lazim juga pada hasil DFT/QE (epsilon.x). Polarisasi dirata-rata ke tiga arah (isotropik).</div>
+      <h3>Ringkasan hasil optik</h3>
+      <div class="tblwrap"><table class="info" id="oSum"><tr><td>Belum dihitung. Tekan ▶ Hitung sifat optik.</td></tr></table></div>
+    </div>
     <div class="pane" id="pSet">
       <div class="grid2">
         <label class="fld">max PW (batas basis)<input type="number" id="maxPW" value="150" min="15" max="1200" step="1"></label>
@@ -297,11 +370,13 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
 
   <!-- RIGHT: visualisation -->
   <section class="panel">
+    <div class="stale" id="staleBar" hidden><span>⚠ <span id="staleTxt"></span></span><button class="pri sm" id="btnRerun">▶ Hitung ulang dengan input terbaru</button></div>
     <div class="tabs" id="tabsR">
       <button class="tab on" data-p="vGuide">📘 Panduan</button>
       <button class="tab" data-p="vStruct">Struktur 3D</button>
       <button class="tab" data-p="vBands">Struktur pita</button>
       <button class="tab" data-p="vDos">DOS</button>
+      <button class="tab" data-p="vOpt">🌈 Optik</button>
       <button class="tab" data-p="vOut">Output</button>
       <button class="tab" data-p="vDl">Unduh</button>
     </div>
@@ -310,7 +385,7 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
         <div class="hero">
           <div>
             <h2>Panduan pemula: dari struktur kristal ke DOS</h2>
-            <p>Aplikasi ini meniru alur kerja Quantum ESPRESSO: <b>pw.x (scf) → pw.x (bands) → pw.x (nscf) → dos.x</b>. Ikuti langkah 1–11 secara berurutan. Setiap langkah punya tombol <span class="kbd">Coba</span> yang langsung menjalankan bagian aplikasi yang sesuai. Waktu yang dibutuhkan sekitar 15 menit.</p>
+            <p>Aplikasi ini meniru alur kerja Quantum ESPRESSO: <b>pw.x (scf) → pw.x (bands) → pw.x (nscf) → dos.x</b>. Ikuti langkah 1–13 secara berurutan. Setiap langkah punya tombol <span class="kbd">Coba</span> yang langsung menjalankan bagian aplikasi yang sesuai. Waktu yang dibutuhkan sekitar 15 menit.</p>
             <p class="hint">Saat pertama dibuka, aplikasi sudah memuat <b>data contoh silikon (Si)</b> yang dihitung sebelumnya. Jadi tab Struktur pita, DOS, Output, dan Unduh sudah terisi sebelum Anda menghitung apa pun.</p>
           </div>
           <div class="herobtn">
@@ -387,8 +462,17 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
             <p class="look">Perhatikan: pada dopan donor, E<sub>F</sub> naik masuk ke pita konduksi dan DOS(E<sub>F</sub>) menjadi tidak nol, artinya material menjadi konduktif. Makin tinggi konsentrasi, makin dalam E<sub>F</sub> masuk ke pita konduksi (efek Burstein–Moss).</p>
             <button data-act="dope">Coba: siapkan ZnO:Al di tab Doping</button></div></li>
 
+          <li><div class="st"><h4>Sifat optik</h4>
+            <p>Buka tab <b>🌈 Optik</b> di panel kiri untuk pengaturan (grid-k, pelebaran, scissor, Drude), lalu klik <b>▶ Hitung sifat optik</b>. Grafiknya muncul di tab <b>🌈 Optik</b> panel kanan: fungsi dielektrik ε₁/ε₂, indeks bias n/k, koefisien serapan α, dan reflektivitas R. Sumbu x bisa berupa energi foton (eV) atau panjang gelombang (nm), dengan pita warna cahaya tampak sebagai acuan.</p>
+            <p class="look">Perhatikan: untuk Si, serapan kuat baru dimulai sekitar 3 eV walaupun celah pitanya 0,81 eV. Penyebabnya, foton hanya menghasilkan transisi <i>vertikal</i> (k sama), sedangkan celah Si tidak langsung. ε∞ hasil model (~11,8) dekat dengan nilai eksperimen 11,7.</p>
+            <button data-act="optic">Coba: hitung sifat optik</button></div></li>
+
+          <li><div class="st"><h4>Kembali ke nilai default</h4>
+            <p>Tombol <b>↺ Nilai default</b> (kanan atas) menampilkan tabel berisi setiap parameter: nilai sekarang, nilai default, dan tombol untuk memulihkannya satu per satu atau sekaligus. Kolom di Editor cepat yang sudah berbeda dari default diberi warna kuning.</p>
+            <button data-act="defaults">Coba: buka tabel nilai default</button></div></li>
+
           <li><div class="st"><h4>Unduh hasil</h4>
-            <p>Tab <b>Unduh</b> berisi file input (scf, bands, nscf, dos), output (<code>.out</code>, <code>.dos</code>, <code>.bands.dat.gnu</code>, CSV), struktur (XYZ, CIF, XSF, POSCAR), dan gambar PNG. Untuk mendapatkan semuanya dengan nama file asli, gunakan <b>Unduh semua (.zip)</b>. File CSV bisa langsung dibuka di Excel atau Google Sheets untuk membuat grafik sendiri.</p>
+            <p>Tab <b>Unduh</b> berisi file input (scf, bands, nscf, dos), output (<code>.out</code>, <code>.dos</code>, <code>.bands.dat.gnu</code>, CSV), struktur (XYZ, CIF, XSF, POSCAR), dan gambar PNG. Untuk mendapatkan semuanya dengan nama file asli, gunakan <b>Unduh semua (.zip)</b>. Tombol <b>📄 Rekap hasil (.docx)</b> di kanan atas membuat laporan Word lengkap: data input, posisi atom, gambar struktur, pita, dan DOS, tabel hasil, serta analisis otomatis. File CSV bisa langsung dibuka di Excel atau Google Sheets untuk membuat grafik sendiri.</p>
             <button data-act="dl">Coba: buka tab Unduh</button></div></li>
         </ol>
 
@@ -469,6 +553,16 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
       </div>
       <div class="viewwrap" id="dw"><canvas id="cvDos"></canvas><div class="overlay" id="ovDos"></div></div>
     </div>
+    <div class="pane" id="vOpt">
+      <div class="row">
+        <span class="hint">Tampilkan</span>
+        <select id="oView"><option value="all">Semua (2×2)</option><option value="eps">Fungsi dielektrik ε₁, ε₂</option><option value="nk">Indeks bias n, k</option><option value="alpha">Koefisien serapan α</option><option value="R">Reflektivitas R</option></select>
+        <span class="hint">sumbu x</span><select id="oX"><option value="ev">energi foton (eV)</option><option value="nm">panjang gelombang (nm)</option></select>
+        <label class="ck"><input type="checkbox" id="oVis" checked>pita cahaya tampak</label>
+        <span style="flex:1"></span><button class="sm" id="dlOptPng">⬇ PNG</button>
+      </div>
+      <div class="viewwrap" id="ow"><canvas id="cvOpt"></canvas><div class="overlay" id="ovOpt"></div></div>
+    </div>
     <div class="pane" id="vOut">
       <div class="row">
         <select id="outSel"><option value="scf">scf.out</option><option value="bands">bands.out</option><option value="dos">dos.out</option></select>
@@ -477,7 +571,7 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
       <pre class="out" id="outTxt">(belum ada output)</pre>
     </div>
     <div class="pane" id="vDl">
-      <div class="row"><button class="pri" id="dlZip">⬇ Unduh semua (.zip)</button><button id="dlApp">⬇ Simpan aplikasi ini (.html, bisa offline)</button><button data-act="pack">⬇ Paket data latihan (.zip)</button></div>
+      <div class="row"><button class="pri" id="dlReport">📄 Rekap hasil pemodelan (.docx)</button><button id="dlZip">⬇ Unduh semua (.zip)</button><button id="dlApp">⬇ Simpan aplikasi ini (.html, bisa offline)</button><button data-act="pack">⬇ Paket data latihan (.zip)</button></div>
       <div class="hint" id="dlHint"></div>
       <h3>Input</h3><div class="dlgrid" id="dlIn"></div>
       <h3>Output &amp; data</h3><div class="dlgrid" id="dlOut"></div>
@@ -486,6 +580,18 @@ table.click tr:not(:first-child):hover td{background:#e8f0fe}
     </div>
   </section>
 </main>
+<div id="defModal" class="modal" hidden><div class="mbox">
+  <div class="mhead"><div><b>↺ Nilai default / standar</b><div class="hint" id="defOrigin"></div></div><button id="defClose">✕ Tutup</button></div>
+  <div class="row"><label class="ck"><input type="checkbox" id="defOnly">hanya tampilkan yang berbeda dari default</label><span class="hint" id="defCount"></span></div>
+  <div class="mbody" id="defBody"></div>
+  <div class="row mfoot">
+    <button class="pri" id="defAll">↺ Kembalikan SEMUA ke default</button>
+    <button id="defPw">↺ Input pw.x saja</button>
+    <button id="defSet">↺ Pengaturan perhitungan & optik saja</button>
+    <button id="defView">↺ Tampilan saja</button>
+    <button id="defFactory">⟲ Setelan pabrik (contoh Si + data contoh)</button>
+  </div>
+</div></div>
 <div id="toast"></div>
 <script>
 /*CORE-START*/
@@ -858,6 +964,91 @@ function eigHermitian(ar, ai, n){
   tqli(d,e,n);
   return Array.from(d).sort((a,b)=>a-b);
 }
+// Vektor eigen: reduksi Householder (disimpan) + iterasi invers tridiagonal + transformasi balik
+function eigHermitianVec(ar, ai, n, nb){
+  const d=new Float64Array(n), e=new Float64Array(n), ecr=new Float64Array(n), eci=new Float64Array(n);
+  const VR=[], VI=[], BETA=new Float64Array(n);
+  const pr=new Float64Array(n), pi=new Float64Array(n);
+  for (let k=0;k<n-2;k++){
+    const m0=k+1; d[k]=ar[k*n+k];
+    let s2=0; for (let i=m0;i<n;i++){ const xr=ar[i*n+k], xi=ai[i*n+k]; s2+=xr*xr+xi*xi; }
+    if (s2<1e-300){ e[k]=0; ecr[k]=0; eci[k]=0; VR.push(null); VI.push(null); continue; }
+    const sg=Math.sqrt(s2), x0r=ar[m0*n+k], x0i=ai[m0*n+k], ax0=Math.hypot(x0r,x0i);
+    let phr=1, phi=0; if (ax0>0){ phr=x0r/ax0; phi=x0i/ax0; }
+    const vr=new Float64Array(n-m0), vi=new Float64Array(n-m0);
+    for (let i=m0;i<n;i++){ vr[i-m0]=ar[i*n+k]; vi[i-m0]=ai[i*n+k]; }
+    vr[0]+=phr*sg; vi[0]+=phi*sg;
+    const beta=1/(sg*(sg+ax0)); BETA[k]=beta; VR.push(vr); VI.push(vi);
+    for (let i=m0;i<n;i++){ let sr=0, si=0; const row=i*n;
+      for (let j=m0;j<n;j++){ const br=ar[row+j], bi=ai[row+j], xr=vr[j-m0], xi=vi[j-m0]; sr+=br*xr-bi*xi; si+=br*xi+bi*xr; }
+      pr[i]=beta*sr; pi[i]=beta*si; }
+    let kr=0; for (let i=m0;i<n;i++) kr+=vr[i-m0]*pr[i]+vi[i-m0]*pi[i];
+    const K=0.5*beta*kr;
+    for (let i=m0;i<n;i++){ pr[i]-=K*vr[i-m0]; pi[i]-=K*vi[i-m0]; }
+    for (let i=m0;i<n;i++){ const row=i*n, a=vr[i-m0], b=vi[i-m0], c=pr[i], dd=pi[i];
+      for (let j=m0;j<n;j++){ const wr=pr[j], wi=pi[j], ur=vr[j-m0], ui=vi[j-m0];
+        ar[row+j]-= (a*wr+b*wi)+(c*ur+dd*ui); ai[row+j]-= (b*wr-a*wi)+(dd*ur-c*ui); } }
+    e[k]=sg; ecr[k]=-phr*sg; eci[k]=-phi*sg;   // elemen subdiagonal kompleks = -fase·σ
+  }
+  if (n>=2){ d[n-2]=ar[(n-2)*n+n-2]; d[n-1]=ar[(n-1)*n+n-1]; ecr[n-2]=ar[(n-1)*n+n-2]; eci[n-2]=ai[(n-1)*n+n-2]; e[n-2]=Math.hypot(ecr[n-2],eci[n-2]); }
+  else d[0]=ar[0];
+  e[n-1]=0;
+  // fase diagonal D: T_real = D^H T_c D
+  const Dr=new Float64Array(n), Di=new Float64Array(n); Dr[0]=1;
+  for (let k=0;k<n-1;k++){ const m=Math.hypot(ecr[k],eci[k]); let pr_=1, pi_=0; if (m>0){ pr_=ecr[k]/m; pi_=eci[k]/m; } Dr[k+1]=pr_*Dr[k]-pi_*Di[k]; Di[k+1]=pr_*Di[k]+pi_*Dr[k]; }
+  const d0=Float64Array.from(d), e0=Float64Array.from(e);
+  tqli(d,e,n);
+  const vals=Array.from(d).sort((a,b)=>a-b).slice(0,nb);
+  // iterasi invers pada tridiagonal real (LU dengan pivot parsial, gaya LAPACK dgttrf/dgtts2)
+  const norm1=Math.max(...Array.from(d0).map((x,i)=>Math.abs(x)+Math.abs(e0[i])+(i?Math.abs(e0[i-1]):0)));
+  const Y=[];
+  for (let b=0;b<nb;b++){
+    const lam=vals[b]+1e-12*norm1*(1+b%3);
+    const D_=new Float64Array(n), DL=new Float64Array(n), DU=new Float64Array(n), DU2=new Float64Array(n), IP=new Int32Array(n);
+    for (let i=0;i<n;i++){ D_[i]=d0[i]-lam; if (i<n-1){ DL[i]=e0[i]; DU[i]=e0[i]; } }
+    for (let i=0;i<n-1;i++){
+      if (Math.abs(D_[i])>=Math.abs(DL[i])){ if (D_[i]===0) D_[i]=1e-14*norm1; const f=DL[i]/D_[i]; DL[i]=f; D_[i+1]-=f*DU[i]; IP[i]=i; }
+      else { const f=D_[i]/DL[i]; D_[i]=DL[i]; DL[i]=f; const t=DU[i]; DU[i]=D_[i+1]; D_[i+1]=t-f*D_[i+1]; if (i<n-2){ DU2[i]=DU[i+1]; DU[i+1]=-f*DU[i+1]; } IP[i]=i+1; }
+    }
+    if (D_[n-1]===0) D_[n-1]=1e-14*norm1;
+    let y=new Float64Array(n); for (let i=0;i<n;i++) y[i]=Math.sin(1.7*i+0.9*b+0.3)+0.5;
+    const solve=()=>{ for (let i=0;i<n-1;i++){ if (IP[i]===i) y[i+1]-=DL[i]*y[i]; else { const t=y[i]; y[i]=y[i+1]; y[i+1]=t-DL[i]*y[i]; } }
+      y[n-1]/=D_[n-1]; if (n>1) y[n-2]=(y[n-2]-DU[n-2]*y[n-1])/(D_[n-2]||1e-14*norm1);
+      for (let i=n-3;i>=0;i--) y[i]=(y[i]-DU[i]*y[i+1]-DU2[i]*y[i+2])/(D_[i]||1e-14*norm1); };
+    for (let it=0;it<3;it++){
+      solve();
+      // ortogonalisasi terhadap vektor sebelumnya dalam klaster (hampir) terdegenerasi
+      for (let q=b-1;q>=0 && Math.abs(vals[q]-vals[b])<1e-6*Math.max(1,norm1);q--){ const yq=Y[q]; let s=0; for (let i=0;i<n;i++) s+=yq[i]*y[i]; for (let i=0;i<n;i++) y[i]-=s*yq[i]; }
+      let nr=0; for (let i=0;i<n;i++) nr+=y[i]*y[i]; nr=Math.sqrt(nr)||1; for (let i=0;i<n;i++) y[i]/=nr;
+    }
+    Y.push(y);
+  }
+  // transformasi balik: x = H_0 … H_{n-3} (D y)
+  const vecs=Y.map(y=>{
+    const zr=new Float64Array(n), zi=new Float64Array(n);
+    for (let i=0;i<n;i++){ zr[i]=Dr[i]*y[i]; zi[i]=Di[i]*y[i]; }
+    for (let k=n-3;k>=0;k--){ const vr=VR[k], vi=VI[k]; if (!vr) continue; const m0=k+1, L=n-m0;
+      let sr=0, si=0; for (let i=0;i<L;i++){ sr+=vr[i]*zr[m0+i]+vi[i]*zi[m0+i]; si+=vr[i]*zi[m0+i]-vi[i]*zr[m0+i]; }
+      sr*=BETA[k]; si*=BETA[k];
+      for (let i=0;i<L;i++){ zr[m0+i]-=sr*vr[i]-si*vi[i]; zi[m0+i]-=sr*vi[i]+si*vr[i]; } }
+    return {re:zr, im:zi};
+  });
+  return {vals, vecs};
+}
+// eigenenergi (eV) + elemen matriks momentum |<m|p|n>|² rata-rata arah (a.u., ħ/bohr)²
+function solveKP(H, kc, nbnd){
+  const n=H.n, ar=H.Vr.slice(), ai=H.Vi.slice();
+  const q=[]; for (let i=0;i<n;i++){ q.push(add(kc,H.G[i].g)); ar[i*n+i]+=dot(q[i],q[i]); }
+  const {vals, vecs}=eigHermitianVec(ar,ai,n,nbnd);
+  const P=new Float64Array(nbnd*nbnd);   // P[m*nb+l] = |p_ml|²/3
+  for (let m=0;m<nbnd;m++) for (let l=m;l<nbnd;l++){
+    const A=vecs[m], B=vecs[l]; let xr=0,xi=0,yr=0,yi=0,zr=0,zi=0;
+    for (let i=0;i<n;i++){ const cr=A.re[i]*B.re[i]+A.im[i]*B.im[i], ci=A.re[i]*B.im[i]-A.im[i]*B.re[i], g=q[i];
+      xr+=cr*g[0]; xi+=ci*g[0]; yr+=cr*g[1]; yi+=ci*g[1]; zr+=cr*g[2]; zi+=ci*g[2]; }
+    const v=(xr*xr+xi*xi+yr*yr+yi*yi+zr*zr+zi*zi)/3; P[m*nbnd+l]=v; P[l*nbnd+m]=v;
+  }
+  return {E:vals.map(x=>x*RY), P};
+}
 function solveK(H, kc, nbnd){
   const n=H.n, ar=H.Vr.slice(), ai=H.Vi.slice();
   for (let i=0;i<n;i++){ const q=add(kc,H.G[i].g); ar[i*n+i]+=dot(q,q); }
@@ -941,6 +1132,7 @@ function computeDOS(eigs, wts, sigma, emin, emax, de){
 
 /* ======================= UI ======================= */
 const APP_SRC = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+const SAVED_INPUT=(()=>{ try { return localStorage.getItem('kristalab.input'); } catch(e){ return null; } })();
 const $ = id => document.getElementById(id);
 const S = { cr:null, parsed:null, scf:null, bands:null, dos:null, logs:{scf:'',bands:'',dos:''}, running:false, stop:false, prefix:'pwscf' };
 
@@ -1019,7 +1211,7 @@ function reparse(){
     if (!$('edPath').dataset.touched) $('edPath').value=defaultPath(cr);
     if (!$('edDosx').dataset.touched) $('edDosx').value=defaultDosx(S.prefix);
     if (cr.warn.length) status('Peringatan:\n• '+cr.warn.join('\n• '),'');
-    cellInfo(); scene=null; render3D(); refreshDownloads();
+    cellInfo(); scene=null; render3D(); refreshDownloads(); qFill(); updateStale();
     return true;
   } catch(e){ $('parseInfo').innerHTML=`<span style="color:#cf222e">✖ ${e.message}</span>`; return false; }
 }
@@ -1182,7 +1374,7 @@ async function runSCF(){
   let sumE=0; R.eig.forEach((e,k)=>{ for (let j=0;j<Math.min(oi.no,e.length);j++) sumE+=2*wts[k]*e[j]; });
   L.push('',`     sum of occupied band energies = ${fx(sumE/RY,17,8)} Ry   (model)`,'',
     `     PWSCF-lite   : ${R.time.toFixed(2)}s CPU ${R.time.toFixed(2)}s WALL`,'','   JOB DONE.','');
-  S.scf={ef:oi.ef, oi, kp, eig:R.eig, nbnd, npw:R.H.n};
+  S.scf={ef:oi.ef, oi, kp, eig:R.eig, nbnd, npw:R.H.n}; S.sig=S.sig||{}; S.sig.scf=curSig('scf');
   S.logs.scf=L.join('\n'); showOut('scf');
   status(`scf selesai dalam ${R.time.toFixed(2)} s · ${R.H.n} PW · ${kp.pts.length} titik-k · `+(oi.metal?`E_F = ${oi.ef.toFixed(4)} eV`:`HOMO = ${oi.homo.toFixed(4)} eV`+(isFinite(oi.lumo)?`, LUMO = ${oi.lumo.toFixed(4)} eV, celah = ${(oi.lumo-oi.homo).toFixed(3)} eV`:'')),'ok');
   refreshDownloads();
@@ -1210,7 +1402,7 @@ async function runBands(){
       `     celah pita sepanjang jalur = ${(hl.lumo-hl.homo).toFixed(4)} eV (${ih===il?'langsung':'tidak langsung'})`);
   }
   L.push('',`     BANDS-lite : ${R.time.toFixed(2)}s WALL`,'','   JOB DONE.','');
-  S.bands={x:kp.path.map(k=>k.x), brk:kp.path.map(k=>!!k.brk), E:R.eig, ticks:kp.ticks, ef, nbnd, kp};
+  S.bands={x:kp.path.map(k=>k.x), brk:kp.path.map(k=>!!k.brk), E:R.eig, ticks:kp.ticks, ef, nbnd, kp}; S.sig=S.sig||{}; S.sig.bands=curSig('bands');
   S.logs.bands=L.join('\n');
   status(`bands selesai: ${kp.path.length} titik-k, ${nbnd} pita, ${R.time.toFixed(2)} s.`,'ok');
   showTab('tabsR','vBands'); drawBands(); refreshDownloads();
@@ -1233,6 +1425,7 @@ async function runDos(){
   status('dos.x: menghitung DOS…'); await tick();
   const D=computeDOS(R.eig,wts,dg,emin,emax,de);
   const fildos=d.fildos||`${S.prefix}.dos`;
+  S.sig=S.sig||{}; S.sig.dos=curSig('dos');
   S.dos={...D, ef:oi.ef, oi, fildos, sigma:dg, nk:kp.pts.length, eig:R.eig, wts, nat:cr.atoms.length, label:formula(cr)};
   // nscf + dos log
   let L=headerLog('PWSCF-lite (nscf)',cr,R.model,R.Gs,nbnd);
@@ -1473,7 +1666,7 @@ function drawDos(hover){
   for (const id of ['bEmin','bEmax','ckShift','ckSideDos']) $(id).addEventListener('input',()=>drawBands());
   for (const id of ['ckShiftD','ckIdos','dEmin','dEmax']) $(id).addEventListener('input',()=>drawDos());
 })();
-function redrawAll(){ render3D(); drawBands(); drawDos(); }
+function redrawAll(){ render3D(); drawBands(); drawDos(); if (window.__optReady) drawOpt(); }
 window.addEventListener('resize',()=>requestAnimationFrame(redrawAll));
 
 /* ---------- builders ---------- */
@@ -1570,6 +1763,10 @@ function allFiles(){
     F.push({name:`${pre}.dos.out`,data:S.logs.dos,g:'out'});
     F.push({name:`${pre}.dos.csv`,data:'E_eV,E_minus_EF_eV,dos_states_per_eV,int_dos\n'+D.E.map((e,i)=>`${e.toFixed(4)},${(e-D.ef).toFixed(4)},${D.D[i].toExponential(6)},${D.I[i].toExponential(6)}`).join('\n')+'\n',g:'out'});
   }
+  if (S.opt){ const o=S.opt;
+    F.push({name:`${pre}.optik.csv`,data:'E_eV,lambda_nm,eps1,eps2,n,k,alpha_cm-1,R\n'+o.E.map((e,i)=>[e.toFixed(4),(1239.84/e).toFixed(2),o.e1[i].toFixed(5),o.e2[i].toFixed(5),o.n[i].toFixed(5),o.k[i].toFixed(5),o.alpha[i].toExponential(5),o.R[i].toFixed(5)].join(',')).join('\n')+'\n',g:'out'});
+    F.push({name:`epsr_${pre}.dat`,data:'# energy grid [eV]     epsr_x  epsr_y  epsr_z\n'+o.E.map((e,i)=>`${fx(e,10,4)}${fx(o.e1[i],12,6)}${fx(o.e1[i],12,6)}${fx(o.e1[i],12,6)}`).join('\n')+'\n',g:'out'});
+    F.push({name:`epsi_${pre}.dat`,data:'# energy grid [eV]     epsi_x  epsi_y  epsi_z\n'+o.E.map((e,i)=>`${fx(e,10,4)}${fx(o.e2[i],12,6)}${fx(o.e2[i],12,6)}${fx(o.e2[i],12,6)}`).join('\n')+'\n',g:'out'}); }
   F.push(...structFiles());
   return F;
 }
@@ -1577,7 +1774,7 @@ function allFiles(){
 /* ---------- downloads ---------- */
 let DL=null, DLready=false;
 setTimeout(async()=>{ try{ if (window.claude && claude.use) DL=await claude.use('downloads'); }catch(e){ DL=null; } DLready=true; refreshDownloads(); },0);
-const ALLOWED=['gif','png','jpg','jpeg','webp','txt','json','md','csv','html','svg','pdf','zip'];
+const ALLOWED=['gif','png','jpg','jpeg','webp','txt','json','md','csv','html','svg','pdf','zip','docx','xlsx','pptx'];
 async function saveFile(name, data){
   const ext=(name.split('.').pop()||'').toLowerCase(); const hasExt=name.includes('.');
   if (DL){
@@ -1632,7 +1829,7 @@ document.addEventListener('click',async e=>{
 });
 $('dlZip').addEventListener('click',async()=>{
   const enc=new TextEncoder(); const files=allFiles().map(f=>({name:`${S.prefix}/${f.name}`,u8:enc.encode(f.data)}));
-  for (let i=0;i<IMG.length;i++){ if ((i===1&&!S.bands)||(i===2&&!S.dos)) continue; const b=await imgBlob(i); if (b) files.push({name:`${S.prefix}/${S.prefix}.${IMG[i][1]}`,u8:new Uint8Array(await b.arrayBuffer())}); }
+  for (let i=0;i<IMG.length;i++){ if ((i===1&&!S.bands)||(i===2&&!S.dos)||(i===3&&!S.opt)) continue; const b=await imgBlob(i); if (b) files.push({name:`${S.prefix}/${S.prefix}.${IMG[i][1]}`,u8:new Uint8Array(await b.arrayBuffer())}); }
   files.push({name:`${S.prefix}/README.txt`,u8:enc.encode(`Dibuat oleh KristaLab (model EPM) — ${new Date().toISOString()}\n\nUntuk menjalankan ulang dengan Quantum ESPRESSO:\n  pw.x  < ${S.prefix}.scf.in   > ${S.prefix}.scf.out\n  pw.x  < ${S.prefix}.bands.in > ${S.prefix}.bands.out   (lalu bands.x)\n  pw.x  < ${S.prefix}.nscf.in  > ${S.prefix}.nscf.out\n  dos.x < ${S.prefix}.dos.in   > ${S.prefix}.dos.out\nSiapkan file pseudopotensial (.UPF) sesuai ATOMIC_SPECIES di folder pseudo_dir.\nPlot pita: gnuplot> plot '${S.prefix}.bands.dat.gnu' w l\n`)});
   saveFile(`${S.prefix}_kristalab.zip`, makeZip(files));
 });
@@ -1642,8 +1839,8 @@ for (const [b,p] of [['dlStructPng',0],['dlBandsPng',1],['dlDosPng',2]]) $(b).ad
 /* ---------- wiring ---------- */
 bindTabs('tabsL'); bindTabs('tabsR');
 const sel=$('preset'); sel.innerHTML='<option value="">— Contoh input —</option>'+Object.keys(PRESETS).map(k=>`<option>${k}</option>`).join('');
-function loadText(t){ $('edIn').value=t; $('edPath').dataset.touched=''; $('edDosx').dataset.touched=''; $('nbBands').dataset.touched=''; $('nbDos').dataset.touched=''; S.scf=S.bands=S.dos=null; S.logs={scf:'',bands:'',dos:''}; showOut('scf'); reparse(); redrawAll(); }
-sel.addEventListener('change',()=>{ if (sel.value){ loadText(PRESETS[sel.value]()); status(`Contoh "${sel.value}" dimuat. Tekan ▶ Jalankan.`); showTab('tabsL','pIn'); } });
+function loadText(t, label){ S.sig={}; $('edIn').value=t; try{ localStorage.setItem('kristalab.input',t); }catch(e){} $('edPath').dataset.touched=''; $('edDosx').dataset.touched=''; $('nbBands').dataset.touched=''; $('nbDos').dataset.touched=''; S.scf=S.bands=S.dos=S.opt=null; if ($('oSum')) $('oSum').innerHTML='<tr><td>Belum dihitung. Tekan ▶ Hitung sifat optik.</td></tr>'; S.logs={scf:'',bands:'',dos:''}; showOut('scf'); reparse(); redrawAll();  if (window.__defReady){ setOrigin(label||'Input dimuat', t); snapDefaults(); } }
+sel.addEventListener('change',()=>{ if (sel.value){ loadText(PRESETS[sel.value](),'Contoh: '+sel.value); status(`Contoh "${sel.value}" dimuat. Tekan ▶ Jalankan.`); showTab('tabsL','pIn'); } });
 let deb=null; $('edIn').addEventListener('input',()=>{ clearTimeout(deb); deb=setTimeout(reparse,350); });
 $('edPath').addEventListener('input',()=>$('edPath').dataset.touched='1');
 $('edDosx').addEventListener('input',()=>$('edDosx').dataset.touched='1');
@@ -1655,20 +1852,20 @@ $('outSel').addEventListener('change',()=>showOut($('outSel').value));
 $('btnCopyOut').addEventListener('click',()=>copyText($('outTxt').textContent));
 $('btnCopyIn').addEventListener('click',()=>copyText($('edIn').value));
 $('btnOpen').addEventListener('click',()=>$('fileIn').click());
-$('fileIn').addEventListener('change',async()=>{ const f=$('fileIn').files[0]; if (!f) return; loadText(await f.text()); status(`File ${f.name} dimuat.`); $('fileIn').value=''; });
+$('fileIn').addEventListener('change',async()=>{ const f=$('fileIn').files[0]; if (!f) return; loadText(await f.text(),'File: '+f.name); status(`File ${f.name} dimuat.`); $('fileIn').value=''; });
 $('btnScf').addEventListener('click',()=>guarded(async()=>{ await runSCF(); showTab('tabsR','vOut'); }));
 $('btnBands').addEventListener('click',()=>guarded(runBands));
 $('btnDos').addEventListener('click',()=>guarded(runDos));
 function runAllNow(){ return guarded(async()=>{ await runSCF(); await runBands(); await runDos(); showTab('tabsR','vBands'); status('Selesai: scf → bands → nscf → dos.x. Lihat tab Struktur pita, DOS, Output, dan Unduh.','ok'); }); }
 $('btnRunAll').addEventListener('click',runAllNow);
 $('btnStop').addEventListener('click',()=>{ S.stop=true; });
-$('btnBuild').addEventListener('click',()=>{ try { loadText(builderInput()); showTab('tabsL','pIn'); showTab('tabsR','vStruct'); status('Input dibuat dari builder.','ok'); } catch(e){ status('✖ '+e.message,'err'); } });
+$('btnBuild').addEventListener('click',()=>{ try { loadText(builderInput(),'Builder: '+$('bType').selectedOptions[0].text); showTab('tabsL','pIn'); showTab('tabsR','vStruct'); status('Input dibuat dari builder.','ok'); } catch(e){ status('✖ '+e.message,'err'); } });
 $('btnSuper').addEventListener('click',()=>{
   if (!S.cr) return status('✖ Input belum valid.','err');
   const n=[$('sc1'),$('sc2'),$('sc3')].map(e=>Math.max(1,Math.min(6,+e.value||1))); const cr=S.cr;
   const atoms=[]; for (let i=0;i<n[0];i++) for (let j=0;j<n[1];j++) for (let k=0;k<n[2];k++) for (const a of cr.atoms){ const f=a.crys.map(x=>x-Math.floor(x+1e-9)); atoms.push({label:a.label, f:[(f[0]+i)/n[0],(f[1]+j)/n[1],(f[2]+k)/n[2]]}); }
   const cell=cr.avec.map((v,i)=>scl(v,BOHR*n[i]));
-  loadText(rewriteStructure(cr,atoms,cell,`_${n.join('x')}`));
+  loadText(rewriteStructure(cr,atoms,cell,`_${n.join('x')}`),`Supercell ${n.join('×')}`);
   status(`Supercell ${n.join('×')} dibuat (${atoms.length} atom). Grid-k sebaiknya diperkecil dan max PW dinaikkan.`,'ok'); showTab('tabsL','pIn');
 });
 function editAtoms(fn){
@@ -1678,7 +1875,7 @@ function editAtoms(fn){
   atoms=fn(atoms,idx); if (!atoms) return;
   const cell=cr.avec.map(v=>scl(v,BOHR));
   const txt=rewriteStructure(cr,atoms,cell,'');
-  loadText(txt);
+  loadText(txt,'Substitusi/vakansi');
 }
 $('btnSub').addEventListener('click',()=>editAtoms((at,i)=>{ const el=$('subEl').value.trim(); if (!ELEM[elemOf(el)]){ status(`✖ Unsur "${el}" tidak dikenal.`,'err'); return null; } at[i].label=el; status(`Atom ${i+1} diganti menjadi ${el}.`,'ok'); return at; }));
 $('btnVac').addEventListener('click',()=>editAtoms((at,i)=>{ if (at.length<2){ status('✖ Tidak bisa menghapus atom terakhir.','err'); return null; } at.splice(i,1); status(`Atom ${i+1} dihapus (vakansi).`,'ok'); return at; }));
@@ -1722,11 +1919,13 @@ const EXS=[
    'Al (ΔZ = +1, donor): E<sub>F</sub> masuk ke <b>pita konduksi</b>, jadi tipe-n. N (ΔZ = −1, akseptor): E<sub>F</sub> turun sekitar <b>0,3 eV di bawah VBM</b> karena ada hole di pita valensi, jadi tipe-p. Pada kedua kasus DOS(E<sub>F</sub>) tidak nol, artinya material menjadi konduktif.'],
   ['Doping isovalen: ZnMgO','Ganti dopan menjadi Mg di situs Zn (2×1×1, 25%). Apakah E<sub>F</sub> berpindah? Apa yang terjadi pada celah?',
    'Mg memiliki valensi yang sama dengan Zn (ΔZ = 0), jadi tidak ada pembawa tambahan dan E<sub>F</sub> <b>tetap di celah</b>. Celahnya melebar dari 3,37 menjadi sekitar <b>3,46 eV</b>. Arah perubahannya sama dengan eksperimen: Zn₁₋ₓMgₓO dipakai untuk memperlebar celah ZnO. Besarnya hanya kualitatif.'],
+  ['Sifat optik: semikonduktor, oksida, logam','Hitung sifat optik (tab 🌈 Optik) untuk Si, ZnO, dan Al. Bandingkan ε∞, tepi serapan, dan reflektivitas di cahaya tampak. Mana yang transparan, mana yang menyerap, dan mana yang memantul?',
+   'Si: ε∞ ≈ 11,8 (eksperimen 11,7). Serapan kuat mulai sekitar 2,9 eV, sehingga Si menyerap cahaya biru-ungu dan tampak gelap/abu-abu. ZnO: tepi serapan sekitar 3,26 eV (380 nm, UV), sehingga <b>transparan</b> untuk cahaya tampak dan dipakai sebagai elektroda transparan. ε∞ model ≈ 4,7, sedikit di atas eksperimen 3,7. Al: <b>R ≈ 98%</b> di cahaya tampak (kilap logam), dengan tepi plasma sekitar 14,9 eV (eksperimen ≈ 15 eV). Di atas tepi plasma, Al menjadi tembus sinar UV ekstrem.'],
   ['Supercell','Muat Si, buat supercell 2×2×2 di Builder. Berapa jumlah atom dan elektronnya? Mengapa perhitungannya lebih lambat dan mengapa max PW perlu dinaikkan?',
    '<b>16 atom, 64 elektron.</b> Volume sel 8 kali lebih besar, sehingga jumlah gelombang bidang untuk ketelitian yang sama juga sekitar 8 kali lebih banyak. Matriks yang dihitung pun jauh lebih besar (waktunya kira-kira sebanding dengan N³). Pita juga "terlipat" ke zona Brillouin yang lebih kecil.']
 ];
 $('exList').innerHTML=EXS.map((e,i)=>`<div class="ex"><b class="q">Latihan ${i+1}. ${e[0]}</b><br>${e[1]}<details><summary>Lihat kunci jawaban</summary><div>${e[2]}</div></details></div>`).join('');
-function setPreset(name){ sel.value=name; loadText(PRESETS[name]()); }
+function setPreset(name){ sel.value=name; loadText(PRESETS[name](),'Contoh: '+name); }
 function flash(id){ const el=$(id); if (!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
 function loadDemo(){
   if (!DEMO) return;
@@ -1736,6 +1935,8 @@ function loadDemo(){
   S.scf=JSON.parse(JSON.stringify(DEMO.scf));
   S.bands={...DEMO.bands, kp:{path:DEMO.bands.path.map(c=>({cart:c}))}};
   S.dos={...DEMO.dos}; S.logs={...DEMO.logs};
+  if (window.__defReady){ setOrigin('Data contoh Si',DEMO.input); snapDefaults(); }
+  S.sig={}; if (window.__qReady){ S.sig.scf=curSig('scf'); S.sig.bands=curSig('bands'); S.sig.dos=curSig('dos'); updateStale(); }
   showOut('scf'); refreshDownloads(); redrawAll();
   status('Data contoh Si dimuat (hasil pra-hitung). Lihat tab Struktur pita, DOS, dan Output, atau ikuti 📘 Panduan.','ok');
 }
@@ -1798,7 +1999,7 @@ function dLoadHost(quiet){
   const txt = pre ? PRESETS[pre]() : $('edIn').value;
   let p, cr; try { p=parseQE(txt); cr=buildCrystal(p); } catch(e){ status('✖ Host tidak valid: '+e.message,'err'); return false; }
   DP.host={txt, p, cr, name:formula(cr)};
-  if (pre && !quiet){ sel.value=pre; loadText(txt); }
+  if (pre && !quiet){ sel.value=pre; loadText(txt,'Contoh: '+pre); }
   const els=[...new Set(cr.atoms.map(a=>a.el))];
   $('dSite').innerHTML=els.map(e=>`<option>${e}</option>`).join('');
   $('dHostInfo').innerHTML=`Host: <b>${formula(cr)}</b> · ${cr.atoms.length} atom/sel · situs: ${els.map(e=>`${e} ×${cr.atoms.filter(a=>a.el===e).length}`).join(', ')}. Ganti host dengan menu di atas, atau pilih "Input pw.x saat ini" untuk memakai struktur Anda sendiri (harus belum didoping).`;
@@ -1921,7 +2122,7 @@ function dBuildInput(){
 }
 function dApply(){
   const {txt, st, chosen}=dBuildInput();
-  loadText(txt);
+  loadText(txt,'Doping: '+dFormula(st.H,st.site,st.dop,st.x)+` (supercell ${st.n.join('×')})`);
   const cr=S.cr, ne=nocc(cr).nelec, extra=Math.max(8,Math.round(cr.atoms.length/2));
   $('nbDos').value=Math.ceil(ne/2)+extra; $('nbBands').value=Math.ceil(ne/2)+extra; $('nbDos').dataset.touched='1'; $('nbBands').dataset.touched='1';
   $('edNscfK').value=`K_POINTS automatic\n  ${dNscf(st.H,st.n).join(' ')} 0 0 0`;
@@ -1931,6 +2132,7 @@ function dApply(){
   const D=$('dDiff'); D.style.display='block';
   D.innerHTML='<span class="hint">Input baru (baris hijau = berubah atau baru dibanding host):</span>\n'+txt.split('\n').map(l=>{ const e=l.replace(/&/g,'&amp;').replace(/</g,'&lt;'); return old.has(l.trim())? '  '+e : `<span class="add">+ ${e}</span>`; }).join('\n');
   S.lastDope={host:st.H.name, dop:st.dop, site:st.site, sc:st.n.join('×'), m:st.m, x:st.x, carr:st.dZ?st.carr:0, dZ:st.dZ, formula:dFormula(st.H,st.site,st.dop,st.x)};
+  if (window.__defReady) snapDefaults();
   $('rep1').value=$('rep2').value=$('rep3').value=1; scene=null; showTab('tabsR','vStruct'); render3D();
   status(`Input doping dibuat: ${S.lastDope.formula} (${st.nat} atom, ${st.m} dopan ${st.dop} di situs ${chosen.length} ${st.site}). Atom dopan bercincin kuning di Struktur 3D.`,'ok');
 }
@@ -1978,6 +2180,662 @@ dLoadHost(true);
 
 ACT.dope=()=>{ $('dHost').value='ZnO — wurtzite (4 atom/sel)'; dLoadHost(); $('dSite').value='Zn'; dFillDopants(); $('dEl').value='Al'; renderPT(); $('dN1').value=2; $('dN2').value=2; $('dN3').value=1; $('dM').value=1; dUpdate(); showTab('tabsL','pDope'); flash('pDope'); status('Tab Doping disiapkan untuk ZnO:Al (2×2×1, 1 dopan = 12,5%). Mulai dari tahap 1: ▶ Hitung DOS host.','ok'); };
 ACT.zno=()=>{ setPreset('ZnO — wurtzite (celah lebar, oksida)'); runAllNow(); };
+
+/* ---------- laporan .docx ---------- */
+const raf2=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+async function captureFig(pane, wrapId, cvId, draw, w, h){
+  const curR=document.querySelector('#tabsR .tab.on').dataset.p, light=$('ckLight').checked;
+  $('ckLight').checked=true; showTab('tabsR',pane);
+  const wrap=$(wrapId), old=wrap.getAttribute('style')||'';
+  wrap.style.cssText=`flex:none;width:${w}px;height:${h}px;min-height:0`;
+  await raf2(); scene=null; draw();
+  const cv=$(cvId); const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+  const dims={w:cv.width,h:cv.height};
+  if (old) wrap.setAttribute('style',old); else wrap.removeAttribute('style');
+  $('ckLight').checked=light; showTab('tabsR',curR); await raf2(); scene=null; redrawAll();
+  return blob? {u8:new Uint8Array(await blob.arrayBuffer()), ...dims} : null;
+}
+const X=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function DocB(){
+  const b={body:[], media:[], nImg:0};
+  const run=(t,o={})=>{ const pr=[]; if (o.b) pr.push('<w:b/>'); if (o.i) pr.push('<w:i/>'); if (o.color) pr.push(`<w:color w:val="${o.color}"/>`); if (o.sz) pr.push(`<w:sz w:val="${o.sz}"/><w:szCs w:val="${o.sz}"/>`); if (o.mono) pr.push('<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/>'); if (o.sup) pr.push('<w:vertAlign w:val="superscript"/>'); if (o.sub) pr.push('<w:vertAlign w:val="subscript"/>');
+    return `<w:r>${pr.length?`<w:rPr>${pr.join('')}</w:rPr>`:''}<w:t xml:space="preserve">${X(t)}</w:t></w:r>`; };
+  // rich text: **bold** segments
+  const rich=(t,o={})=>String(t).split(/(\*\*[^*]+\*\*)/).filter(x=>x).map(seg=>seg.startsWith('**')?run(seg.slice(2,-2),{...o,b:true}):run(seg,o)).join('');
+  b.p=(t,o={})=>{ const pp=[]; if (o.style) pp.push(`<w:pStyle w:val="${o.style}"/>`); if (o.keep) pp.push('<w:keepNext/>'); if (o.list) pp.push('<w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>'); if (o.align) pp.push(`<w:jc w:val="${o.align}"/>`);
+    b.body.push(`<w:p>${pp.length?`<w:pPr>${pp.join('')}</w:pPr>`:''}${Array.isArray(t)?t.map(x=>typeof x==='string'?rich(x,o):run(x.t,{...o,...x})).join(''):rich(t,o)}</w:p>`); };
+  b.h1=t=>b.p(t,{style:'Heading1'}); b.h2=t=>b.p(t,{style:'Heading2'});
+  b.li=t=>b.p(t,{list:true});
+  b.code=txt=>{ for (const l of String(txt).replace(/\s+$/,'').split('\n')) b.body.push(`<w:p><w:pPr><w:pStyle w:val="Kode"/></w:pPr>${run(l||' ')}</w:p>`); };
+  b.pageBreak=()=>b.body.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
+  b.table=(rows, widths, o={})=>{
+    const tw=widths.reduce((a,c)=>a+c,0);
+    let x=`<w:tbl><w:tblPr><w:tblW w:w="${tw}" w:type="dxa"/><w:tblBorders>${['top','left','bottom','right','insideH','insideV'].map(s=>`<w:${s} w:val="single" w:sz="4" w:space="0" w:color="C9D1D9"/>`).join('')}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>`;
+    rows.forEach((r,ri)=>{ const hd=ri===0&&o.header!==false;
+      x+=`<w:tr>${hd?'<w:trPr><w:tblHeader/></w:trPr>':''}${r.map((c,ci)=>`<w:tc><w:tcPr><w:tcW w:w="${widths[ci]}" w:type="dxa"/>${hd?'<w:shd w:val="clear" w:color="auto" w:fill="E7EEF8"/>':''}</w:tcPr><w:p><w:pPr><w:pStyle w:val="Tabel"/>${(o.right||[]).includes(ci)&&!hd?'<w:jc w:val="right"/>':''}</w:pPr>${rich(c,{b:hd, mono:(o.mono||[]).includes(ci)&&!hd})}</w:p></w:tc>`).join('')}</w:tr>`; });
+    b.body.push(x+'</w:tbl>'); b.p('');
+  };
+  b.img=(fig, cmIn, caption)=>{
+    if (!fig) { b.p('(gambar tidak tersedia)',{i:true}); return; }
+    b.nImg++; const id=b.nImg, rid='rIdImg'+id, name=`image${id}.png`; b.media.push({name, u8:fig.u8, rid});
+    const cx=Math.round(cmIn*360000), cy=Math.round(cx*fig.h/fig.w);
+    b.body.push(`<w:p><w:pPr><w:keepNext/><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Gambar ${id}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="${id}" name="${name}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`);
+    if (caption) b.p(caption,{style:'Keterangan'});
+  };
+  b.build=(title)=>{
+    const enc=new TextEncoder(); const F=[];
+    const NS='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
+    const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${b.body.join('')}<w:sectPr><w:footerReference w:type="default" r:id="rIdFtr"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+    const H=(f,s,b_,sp,keep,col)=>`<w:pPr>${keep?'<w:keepNext/>':''}<w:spacing w:before="${sp[0]}" w:after="${sp[1]}"/>${f}</w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>${b_?'<w:b/>':''}${col?`<w:color w:val="${col}"/>`:''}<w:sz w:val="${s}"/><w:szCs w:val="${s}"/></w:rPr>`;
+    const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri"/><w:sz w:val="21"/><w:szCs w:val="21"/><w:lang w:val="id-ID"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="100" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>
+<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:qFormat/>${H('',40,true,[0,80],true,'1F3864')}</w:style>
+<w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:basedOn w:val="Normal"/><w:qFormat/>${H('',22,false,[0,240],false,'57606A')}</w:style>
+<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="1F6FEB"/></w:pBdr><w:spacing w:before="320" w:after="120"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:b/><w:color w:val="1F3864"/><w:sz w:val="30"/><w:szCs w:val="30"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="220" w:after="80"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:b/><w:color w:val="0969DA"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Kode"><w:name w:val="Kode"/><w:basedOn w:val="Normal"/><w:pPr><w:shd w:val="clear" w:color="auto" w:fill="F3F5F8"/><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="113"/></w:pPr><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Tabel"><w:name w:val="Tabel"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="20" w:after="20" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Keterangan"><w:name w:val="caption"/><w:basedOn w:val="Normal"/><w:qFormat/><w:pPr><w:spacing w:before="60" w:after="200"/><w:jc w:val="center"/></w:pPr><w:rPr><w:i/><w:color w:val="57606A"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Catatan"><w:name w:val="Catatan"/><w:basedOn w:val="Normal"/><w:pPr><w:pBdr><w:left w:val="single" w:sz="18" w:space="6" w:color="D4A72C"/></w:pBdr><w:shd w:val="clear" w:color="auto" w:fill="FFF8E5"/><w:ind w:left="170"/></w:pPr><w:rPr><w:sz w:val="19"/><w:szCs w:val="19"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Footer"><w:name w:val="footer"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/></w:pPr><w:rPr><w:color w:val="57606A"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr></w:style>
+</w:styles>`;
+    const numbering=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="singleLevel"/><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="360" w:hanging="240"/></w:pPr><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/></w:rPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>`;
+    const footer=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:pStyle w:val="Footer"/></w:pPr><w:r><w:t xml:space="preserve">${X(title)} · KristaLab · halaman </w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:ftr>`;
+    const now=new Date().toISOString().replace(/\.\d+Z$/,'Z');
+    F.push({name:'[Content_Types].xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`});
+    F.push({name:'_rels/.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`});
+    F.push({name:'docProps/core.xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${X(title)}</dc:title><dc:creator>KristaLab</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`});
+    F.push({name:'word/_rels/document.xml.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdSty" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdNum" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/><Relationship Id="rIdFtr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>${b.media.map(m=>`<Relationship Id="${m.rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${m.name}"/>`).join('')}</Relationships>`});
+    F.push({name:'word/document.xml',data:doc},{name:'word/styles.xml',data:styles},{name:'word/numbering.xml',data:numbering},{name:'word/footer1.xml',data:footer});
+    const files=F.map(f=>({name:f.name,u8:enc.encode(f.data)})).concat(b.media.map(m=>({name:'word/media/'+m.name,u8:m.u8})));
+    return makeZip(files);
+  };
+  return b;
+}
+
+/* ---- analisis ---- */
+const fmt=(v,d=3)=>isFinite(v)?(+v).toFixed(d).replace('.',','):'—';
+function bandAnalysis(){
+  const B=S.bands, cr=S.cr; if (!B||!cr) return null;
+  const model=buildModel(cr), ne=nocc(cr).nelec, dq=model.dopants.reduce((s,d)=>s+d.dZ*d.count,0);
+  const nH=Math.round((ne-dq)/2); const metalOcc=!!(S.scf&&S.scf.oi&&S.scf.oi.metal);
+  let vb=-Infinity, cb=Infinity, iv=0, ic=0;
+  B.E.forEach((e,i)=>{ if (nH>=1&&e[nH-1]>vb){vb=e[nH-1];iv=i;} if (e.length>nH&&e[nH]<cb){cb=e[nH];ic=i;} });
+  const lab=i=>{ let best=null; for (const t of B.ticks) if (!best||Math.abs(t.x-B.x[i])<Math.abs(best.x-B.x[i])) best=t; const L=s=>String(s||'').replace(/^G$/,'Γ').replace(/\|G$/,'|Γ').replace(/^G\|/,'Γ|');
+    if (best && Math.abs(best.x-B.x[i])<1e-3) return L(best.label);
+    const left=[...B.ticks].filter(t=>t.x<=B.x[i]).pop(), right=B.ticks.find(t=>t.x>B.x[i]);
+    if (left&&right){ const f=(B.x[i]-left.x)/(right.x-left.x); return `${Math.round(f*100)}% dari ${L(left.label)} menuju ${L(right.label)}`; } return `x = ${fmt(B.x[i],3)}`; };
+  // crossings of E_F
+  let cross=0; for (let b=0;b<B.nbnd;b++){ let mn=Infinity,mx=-Infinity; for (const e of B.E){ mn=Math.min(mn,e[b]); mx=Math.max(mx,e[b]); } if (mn<B.ef-1e-3 && mx>B.ef+1e-3) cross++; }
+  const tp=TWOPI/cr.alat;
+  const mass=(i,b,sign)=>{ const out=[]; for (const dir of [-1,1]){ const j=i+2*dir, j1=i+dir; if (j<0||j>=B.x.length) continue; if (B.brk[Math.max(i,j1)]||B.brk[Math.max(j1,j)]) continue;
+      const dk=Math.abs(B.x[j]-B.x[i])*tp, dE=sign*(B.E[j][b]-B.E[i][b])/RY; if (dk<1e-9) continue; if (dE<=1e-7){ out.push({dir,m:Infinity}); continue; } out.push({dir, m:dk*dk/dE, to:lab(j)}); } return out; };
+  const gap=cb-vb; const metal = !(gap>0.05) && (metalOcc || cross>0); const degenerate = gap>0.05 && dq!==0;
+  let bottom=Infinity; for (const e of B.E) bottom=Math.min(bottom,e[0]);
+  let k0=0; for (let b=0;b<B.nbnd;b++){ let mx=-Infinity; for (const e of B.E) mx=Math.max(mx,e[b]); if (mx<B.ef-1e-3) k0=b+1; }
+  return {k0, degenerate, nH, vb, cb, iv, ic, gap, direct: iv===ic || Math.abs(B.x[iv]-B.x[ic])<1e-6, vbAt:lab(iv), cbAt:lab(ic), cross, metal, mE:mass(ic,nH,1), mH:mass(iv,nH-1,-1), vbw:vb-bottom, dq, model};
+}
+function refRow(cr){ const f=formula(cr).replace(/[₀-₉]/g,''); return REF.find(r=>r[0]===f); }
+function classify(gap){ if (!(gap>0.05)) return 'logam / semilogam'; if (gap<0.5) return 'semikonduktor celah sempit'; if (gap<3) return 'semikonduktor'; return 'semikonduktor celah lebar'; }
+
+async function makeReport(){
+  if (!S.cr){ status('✖ Input belum valid; laporan tidak dapat dibuat.','err'); return; }
+  status('Menyusun laporan .docx: mengambil gambar…'); prog(0.1);
+  const cr=S.cr, p=S.parsed, sys=p.nml.system||{}, cp=cellParams(cr), F=formula(cr).replace(/[₀-₉]/g,d=>'₀₁₂₃₄₅₆₇₈₉'.indexOf(d)), model=buildModel(cr), ne=nocc(cr).nelec;
+  const figS=await captureFig('vStruct','vw','cv3d',render3D,900,640); prog(.35);
+  const figB=S.bands? await captureFig('vBands','bw','cvBands',()=>drawBands(),1000,640):null; prog(.6);
+  const figD=S.dos? await captureFig('vDos','dw','cvDos',()=>drawDos(),1000,560):null; prog(.75);
+  let figO=null; if (S.opt){ const v=$('oView').value, xa=$('oX').value; $('oView').value='all'; $('oX').value='ev'; figO=await captureFig('vOpt','ow','cvOpt',()=>drawOpt(),1000,720); $('oView').value=v; $('oX').value=xa; drawOpt(); } prog(.85);
+  const A=bandAnalysis(); const R=refRow(cr);
+  const d=DocB(); const title=`Laporan Pemodelan ${F}`;
+  const tgl=new Date().toLocaleString('id-ID',{dateStyle:'long',timeStyle:'short'});
+  d.p(title,{style:'Title'});
+  d.p(`Struktur kristal, struktur pita, dan density of states · prefix '${S.prefix}' · dibuat ${tgl} dengan KristaLab`,{style:'Subtitle'});
+  d.p('Catatan model: perhitungan memakai **metode pseudopotensial empiris (EPM)** dengan basis gelombang bidang, bukan DFT self-consistent. Format input dan output mengikuti pw.x/dos.x (Quantum ESPRESSO). Tren antarmaterial dapat dipercaya; nilai numerik bersifat semi-kuantitatif. Efek regangan dilebih-lebihkan oleh model ini.',{style:'Catatan'});
+
+  // 1. Ringkasan
+  let SEC=0; const H1=t=>d.h1(`${++SEC}. ${t}`);
+  H1('Ringkasan hasil');
+  const sum=[];
+  sum.push(`Sistem: **${F}**, ${cr.atoms.length} atom per sel, ibrav = ${cr.ibrav}, volume ${fmt(cp.V,3)} Å³, ${ne} elektron valensi (model).`);
+  if (A){
+    if (A.metal) sum.push(`Sifat elektronik: **logam / konduktor**. Tingkat Fermi memotong ${A.cross} pita.`);
+    else if (A.degenerate) sum.push(`Sifat elektronik: **semikonduktor ${A.dq>0?'tipe-n':'tipe-p'} terdegenerasi** (bersifat konduktif). Celah pita host ${fmt(A.gap)} eV (${A.direct?'langsung':'tidak langsung'}).`);
+    else sum.push(`Sifat elektronik: **${classify(A.gap)}** dengan celah pita **${fmt(A.gap)} eV (${A.direct?'langsung':'tidak langsung'})**. VBM di ${A.vbAt}, CBM di ${A.cbAt}.`);
+    if (A.dq!==0 && isFinite(A.gap)) sum.push(`Celah pita bagian host = ${fmt(A.gap)} eV; doping ${A.dq>0?'tipe-n':'tipe-p'} menggeser E_F ${A.dq>0?`ke ${fmt(S.bands.ef-A.cb)} eV di atas CBM`:`ke ${fmt(A.vb-S.bands.ef)} eV di bawah VBM`}.`);
+  } else sum.push('Struktur pita belum dihitung. Jalankan "bands" untuk analisis pita.');
+  if (S.dos){ const nat=S.dos.nat||cr.atoms.length; sum.push(`DOS pada E_F = ${fmt(interpAt(S.dos.E,S.dos.D,S.dos.ef)/nat,4)} keadaan/eV/atom; integral DOS hingga E_F = ${fmt(interpAt(S.dos.E,S.dos.I,S.dos.ef),3)} elektron (seharusnya ${ne}).`); }
+  if (S.opt){ const so=S.opt.sum; sum.push(S.opt.metal? `Optik: ħω_p = ${fmt(S.opt.wpIntra,2)} eV; reflektivitas cahaya tampak ≈ ${fmt(100*so.Rvis,0)}%.` : `Optik: ε∞ = ${fmt(so.eps0,2)}, n(0) = ${fmt(so.n0,2)}, tepi serapan ${so.onset?fmt(so.onset,2)+' eV':'—'}.`); }
+  if (R && A && !A.metal && R[3]!=='logam') sum.push(`Pembanding: celah eksperimen ${R[6]} eV; acuan model KristaLab ${R[3]} eV.`);
+  for (const s of sum) d.li(s);
+
+  // 2. Input
+  H1('Data input');
+  d.h2('2.1 Parameter perhitungan');
+  const kc=p.cards.K_POINTS; const kstr=kc? `${kc.opt} ${kc.lines.map(l=>l.t).join(' ')}`.trim():'—';
+  const Gs=buildGlist(cr,+sys.ecutwfc||25,effMaxPW(cr));
+  d.table([['Parameter','Nilai','Keterangan'],
+    ['calculation',String((p.nml.control||{}).calculation||'scf'),'jenis perhitungan pw.x'],
+    ['prefix',S.prefix,'nama awal file hasil'],
+    ['ibrav',String(cr.ibrav),({0:'bebas (CELL_PARAMETERS)',1:'kubik sederhana',2:'fcc',3:'bcc',4:'heksagonal',6:'tetragonal',8:'ortorombik'})[cr.ibrav]||''],
+    ['celldm(1) / alat',`${fmt(cr.alat,4)} bohr`,`${fmt(cr.alat*BOHR,4)} Å`],
+    ['nat / ntyp',`${cr.atoms.length} / ${Object.keys(cr.species).length}`,'jumlah atom / jenis atom'],
+    ['ecutwfc',`${sys.ecutwfc??'—'} Ry`,'batas energi gelombang bidang'],
+    ['Basis efektif',`${Gs.list.length} PW`,`|G|² ≤ ${fmt(Gs.ecutEff,2)} Ry${Gs.truncated?' (dibatasi max PW)':''}`],
+    ['occupations',String(sys.occupations||'fixed'),sys.degauss!==undefined?`degauss = ${sys.degauss} Ry`:''],
+    ['nbnd (bands / nscf)',`${$('nbBands').value} / ${$('nbDos').value}`,'jumlah pita yang dihitung'],
+    ['K_POINTS (scf)',kstr,'grid Monkhorst–Pack'],
+    ['K_POINTS (nscf/DOS)',$('edNscfK').value.split('\n').slice(1).join(' ').trim(),''],
+    ['dos.x','degauss / DeltaE',(()=>{ const dd=(parseQE($('edDosx').value).nml.dos)||{}; return `${dd.degauss??0.01} Ry / ${dd.deltae??0.02} eV`; })()]
+  ],[2600,2900,4138],{mono:[1]});
+  d.h2('2.2 Sel satuan');
+  d.table([['Besaran','Nilai'],['a, b, c (Å)',`${fmt(cp.a,4)}, ${fmt(cp.b,4)}, ${fmt(cp.c,4)}`],['α, β, γ (°)',`${fmt(cp.al,2)}, ${fmt(cp.be,2)}, ${fmt(cp.ga,2)}`],['Volume sel',`${fmt(cp.V,3)} Å³`],
+    ['Kerapatan massa',`${fmt(cr.atoms.reduce((s,a)=>s+cr.species[a.label].mass,0)*1.66053907/cp.V,4)} g/cm³`],
+    ...cp.A.map((v,i)=>[`vektor a${i+1} (Å)`,v.map(x=>fmt(x,5)).join('   ')])],[3200,6438],{mono:[1]});
+  d.h2('2.3 Spesies dan model potensial');
+  d.table([['Spesies','Massa (sma)','Valensi model','Model potensial (pengganti file UPF)'],...Object.values(cr.species).map(s=>[s.label,fmt(s.mass,3),String(ELEM[s.el][1]),model.desc[s.el]||'—'])],[1200,1500,1500,5438]);
+  d.h2('2.4 Posisi atom');
+  d.table([['#','Atom','Koordinat kristal (x, y, z)','Kartesian (Å)'],...cr.atoms.map((a,i)=>[String(i+1),a.label+(model.dopants.some(q=>q.el===a.el)?' (dopan)':''),a.crys.map(x=>fmt(x,5)).join('  '),a.pos.map(x=>fmt(x*BOHR,4)).join('  ')])],[700,1600,3700,3638],{mono:[2,3]});
+
+  // 3. Struktur
+  H1('Struktur kristal');
+  d.img(figS,15,`Gambar 1. Struktur kristal ${F} (tampilan ${[$('rep1').value,$('rep2').value,$('rep3').value].join('×')} sel).${model.dopants.length?' Atom dopan ditandai cincin oranye.':''}`);
+  let dmin=Infinity, pair=''; for (let i=0;i<cr.atoms.length;i++) for (let j=i;j<cr.atoms.length;j++) for (let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(let c=-1;c<=1;c++){ if (i===j&&!a&&!b&&!c) continue; const t=add(add(scl(cr.avec[0],a),scl(cr.avec[1],b)),scl(cr.avec[2],c)); const dd=norm(sub(add(cr.atoms[j].pos,t),cr.atoms[i].pos)); if (dd<dmin-1e-9){ dmin=dd; pair=`${cr.atoms[i].el}–${cr.atoms[j].el}`; } }
+  const info=nnInfo(cr); const cn={}; cr.atoms.forEach((a,i)=>{ let c=0; for (let j=0;j<cr.atoms.length;j++) for (let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++){ const t=add(add(scl(cr.avec[0],x),scl(cr.avec[1],y)),scl(cr.avec[2],z)); const dd=norm(sub(add(cr.atoms[j].pos,t),a.pos)); if (dd>1e-6&&dd<info[i].dmin*1.1) c++; } (cn[a.el]=cn[a.el]||[]).push(c); });
+  d.p(`Jarak antaratom terpendek adalah **${fmt(dmin*BOHR,4)} Å** (pasangan ${pair}). Bilangan koordinasi (jumlah tetangga terdekat): ${Object.entries(cn).map(([e,v])=>`${e} = ${[...new Set(v)].join('/')}`).join(', ')}.`);
+
+  // 4. Struktur pita
+  H1('Struktur pita');
+  if (S.bands && A){
+    d.img(figB,16.5,`Gambar 2. Struktur pita ${F} sepanjang ${S.bands.ticks.map(t=>String(t.label||'').replace(/^G$/,'Γ')).join('–')}${S.dos?', dengan panel DOS':''}. Garis putus-putus merah = E_F.`);
+    if (!A.metal){
+      d.table([['Besaran','Nilai','Lokasi di zona Brillouin'],['VBM (puncak pita valensi)',`${fmt(A.vb,4)} eV`,A.vbAt],['CBM (dasar pita konduksi)',`${fmt(A.cb,4)} eV`,A.cbAt],['Celah pita',`${fmt(A.gap,4)} eV`,A.direct?'langsung':'tidak langsung'],['Lebar pita valensi',`${fmt(A.vbw,3)} eV`,'dari dasar pita terendah ke VBM']],[3300,2300,4038]);
+      const mtxt=(arr,kind)=>arr.length? arr.map(m=>isFinite(m.m)? `${fmt(m.m,3)} m₀ (arah ${m.to})` : 'sangat besar (pita datar)').join('; ') : '—';
+      d.p(`Massa efektif (perkiraan dari kelengkungan parabola di sekitar ekstremum): elektron di CBM **${mtxt(A.mE)}**; hole di VBM **${mtxt(A.mH)}**.`);
+    } else d.p(`Tingkat Fermi memotong ${A.cross} pita sehingga sistem bersifat logam. Lebar pita terisi (dasar pita terendah hingga E_F) = ${fmt(S.bands.ef-(A.vb-A.vbw),3)} eV.`);
+    // high-symmetry table
+    const nH=A.nH, rows=[['Titik','x (2π/a)',...(A.metal?[A.k0,A.k0+1,A.k0+2,A.k0+3].map(n=>'Pita '+n):[`VB−1`,'VB','CB','CB+1'])]];
+    for (const t of S.bands.ticks){ let i=0; for (let j=0;j<S.bands.x.length;j++) if (Math.abs(S.bands.x[j]-t.x)<Math.abs(S.bands.x[i]-t.x)) i=j; const e=S.bands.E[i];
+      const idx=A.metal?[A.k0-1,A.k0,A.k0+1,A.k0+2]:[nH-2,nH-1,nH,nH+1]; rows.push([String(t.label||'').replace(/^G$/,'Γ'),fmt(t.x,4),...idx.map(b=>b>=0&&b<e.length?fmt(e[b]-S.bands.ef,3):'—')]); }
+    d.p('Energi pada titik simetri tinggi (relatif terhadap E_F, eV):',{keep:true});
+    d.table(rows,[1300,1500,1709,1709,1710,1710],{right:[1,2,3,4,5]});
+  } else d.p('Struktur pita belum dihitung. Jalankan langkah "bands" lalu buat laporan lagi.',{i:true});
+
+  // 5. DOS
+  H1('Density of states (DOS)');
+  if (S.dos){
+    const D=S.dos, nat=D.nat||cr.atoms.length;
+    d.img(figD,16.5,`Gambar 3. DOS ${F}${S.refDos?` dibandingkan dengan ${S.refDos.label} (abu-abu), per atom`:''}. Garis putus-putus = DOS terintegrasi; garis merah = E_F.`);
+    let maxE=D.E[0], maxD=0; D.D.forEach((v,i)=>{ if (v>maxD){maxD=v;maxE=D.E[i];} });
+    d.table([['Besaran','Nilai'],['E_F',`${fmt(D.ef,4)} eV`],['DOS(E_F)',`${fmt(interpAt(D.E,D.D,D.ef),4)} /eV/sel = ${fmt(interpAt(D.E,D.D,D.ef)/nat,4)} /eV/atom`],['∫DOS hingga E_F',`${fmt(interpAt(D.E,D.I,D.ef),3)} elektron (jumlah elektron valensi = ${ne})`],
+      ['Puncak DOS tertinggi',`${fmt(maxD,3)} /eV/sel pada E − E_F = ${fmt(maxE-D.ef,2)} eV`],['Pelebaran Gaussian',`${fmt(D.sigma/RY,4)} Ry = ${fmt(D.sigma,3)} eV`],['Titik-k nscf',`${D.nk} titik tak-ekivalen`]],[3300,6338]);
+  } else d.p('DOS belum dihitung. Jalankan "nscf + dos.x" lalu buat laporan lagi.',{i:true});
+
+  // Sifat optik
+  if (S.opt){ const o=S.opt, so=o.sum, ex=EXP_OPT[formula(cr).replace(/[₀-₉]/g,'')];
+    H1('Sifat optik');
+    d.p(`Fungsi dielektrik dihitung dari transisi antarpita vertikal dengan elemen matriks momentum ⟨c|p|v⟩ (RPA tanpa efek medan lokal dan eksiton), lalu ε₁ diperoleh melalui relasi Kramers–Kronig${o.metal?', ditambah suku Drude intrapita':''}. Parameter: grid-k ${o.P.grid} (${o.nk} titik tak-ekivalen), ${o.nb} pita, pelebaran η = ${o.P.eta} eV, scissor = ${o.P.sc} eV${o.metal?`, γ Drude = ${o.P.gam} eV`:''}.`);
+    d.img(figO,16.5,`Gambar 4. Sifat optik ${F}: fungsi dielektrik ε₁/ε₂, indeks bias n/k, koefisien serapan α (skala log), dan reflektivitas R. Pita berwarna menandai rentang cahaya tampak.`);
+    const rows=[['Besaran','Nilai']];
+    if (o.metal){ rows.push(['Frekuensi plasma intrapita ħω_p',`${fmt(o.wpIntra,2)} eV`]); rows.push(['Tepi plasma (ε₁ = 0)',so.plasma?`${fmt(so.plasma,2)} eV (${fmt(1239.84/so.plasma,0)} nm)`:'—']); }
+    else { rows.push(['Konstanta dielektrik ε∞',`${fmt(so.eps0,2)}${ex?` (eksperimen ${String(ex.eps).replace('.',',')})`:''}`]); rows.push(['Indeks bias statik n(0)',`${fmt(so.n0,3)}${ex?` (eksperimen ${String(ex.n).replace('.',',')})`:''}`]); }
+    rows.push(['Tepi serapan (α ≥ 10⁴ cm⁻¹)', so.onset?`${fmt(so.onset,2)} eV (λ ≈ ${fmt(so.lam,0)} nm)`:'tidak tercapai dalam rentang']);
+    rows.push(['Puncak ε₂ antarpita', so.peaks.length? so.peaks.map(p=>`${fmt(p[0],2)} eV`).join('; '):'—']);
+    rows.push(['n, k, R pada 2,0 eV (620 nm)',`n = ${fmt(so.n2,3)}; k = ${fmt(so.k2,3)}; R = ${fmt(100*so.R2,1)}%`]);
+    rows.push(['Cahaya tampak (400–750 nm)',`R rata-rata ${fmt(100*so.Rvis,1)}%; α = ${so.AvisMin.toExponential(1)} – ${so.AvisMax.toExponential(1)} cm⁻¹`]);
+    d.table(rows,[3600,6038]);
+    const pick=[0.5,1,1.5,2,2.5,3,3.5,4,5,6,8,10].filter(e=>e<=o.E[o.E.length-1]);
+    d.p('Nilai optik pada energi foton terpilih:',{keep:true});
+    d.table([['E (eV)','λ (nm)','ε₁','ε₂','n','k','α (cm⁻¹)','R (%)'],...pick.map(e=>{ const i=Math.max(0,Math.round(e/o.P.de)-1); return [fmt(o.E[i],2),fmt(1239.84/o.E[i],0),fmt(o.e1[i],2),fmt(o.e2[i],2),fmt(o.n[i],3),fmt(o.k[i],3),o.alpha[i].toExponential(2),fmt(100*o.R[i],1)]; })],[1000,1100,1150,1150,1150,1150,1588,1350],{right:[0,1,2,3,4,5,6,7]});
+  }
+
+  // 6. Doping
+  if (model.dopants.length || (S.hist&&S.hist.length)){
+    H1('Doping');
+    if (model.dopants.length){ const L=S.lastDope||{};
+      for (const q of model.dopants) d.li(`Dopan **${q.el}** pada situs **${q.host}**: ${q.count} atom, ΔZ = ${q.dZ>0?'+':''}${q.dZ} → ${q.dZ>0?'donor (tipe-n)':q.dZ<0?'akseptor (tipe-p)':'isovalen'}.`);
+      if (L.x!==undefined) d.li(`Konsentrasi x = ${fmt(100*L.x,2)}% situs ${L.site} (supercell ${L.sc}, ${L.m} dopan), rumus ${L.formula}${L.carr?`, rapat pembawa ≈ ${L.carr.toExponential(2)} cm⁻³`:''}.`);
+    }
+    if (S.hist&&S.hist.length){ d.p('Riwayat perhitungan doping pada sesi ini:',{keep:true});
+      d.table([['#','Sistem','Dopan @ situs','x (%)','Pembawa (cm⁻³)','Celah host (eV)','Posisi E_F','DOS(E_F)/atom'],...S.hist.map((h,i)=>[String(i+1),h.formula,h.dop==='—'?'host murni':`${h.dop} @ ${h.site}`,fmt(100*h.x,2),h.carr?h.carr.toExponential(2):'0',fmt(h.gap),h.pos,fmt(h.dosEF,4)])],[450,1550,1250,800,1250,1100,2038,1150],{right:[3,4,5,7]}); }
+  }
+
+  // 7. Analisis
+  H1('Analisis dan interpretasi');
+  const an=[];
+  if (A){
+    if (A.metal){ an.push(`${F} bersifat **logam**: E_F berada di dalam pita yang terisi sebagian, sehingga ada keadaan kosong tepat di atas E_F dan elektron mudah bergerak (konduktor).`);
+      if (Object.values(cr.species).every(s=>!CB_EL[s.el])) an.push('Pita terendah berbentuk mendekati parabola E ∝ k², ciri elektron hampir bebas; potensial ion lemah setelah ditapis elektron konduksi.'); }
+    else {
+      an.push(`${F} adalah **${A.degenerate?`semikonduktor ${A.dq>0?'tipe-n':'tipe-p'} terdegenerasi`:classify(A.gap)}**${A.degenerate?`. Pita host masih mempertahankan celah ${fmt(A.gap)} eV, tetapi E_F berada di dalam pita sehingga material bersifat konduktif.`:` dengan celah ${fmt(A.gap)} eV.`} ${A.direct?'Celah **langsung**: VBM dan CBM berada di titik-k yang sama, sehingga transisi optik antarpita kuat. Material seperti ini cocok untuk LED, laser, dan detektor cahaya.':'Celah **tidak langsung**: VBM dan CBM berada di titik-k berbeda, sehingga penyerapan/emisi foton memerlukan bantuan fonon dan emisi cahayanya lemah. Material seperti ini lebih sesuai untuk elektronik dan sel surya daripada LED.'}`);
+      const lam=1239.84/A.gap; an.push(`Celah ${fmt(A.gap,2)} eV setara dengan panjang gelombang ambang serapan λ ≈ ${fmt(lam,0)} nm (${lam<380?'ultraviolet':lam<750?'cahaya tampak':'inframerah'}).`);
+      const me=A.mE.filter(m=>isFinite(m.m)).map(m=>m.m), mh=A.mH.filter(m=>isFinite(m.m)).map(m=>m.m);
+      if (me.length&&mh.length){ const e=Math.min(...me), h=Math.min(...mh); an.push(`Massa efektif elektron (~${fmt(e,2)} m₀) ${e<h?'lebih kecil':'lebih besar'} daripada massa efektif hole (~${fmt(h,2)} m₀), sehingga mobilitas ${e<h?'elektron':'hole'} cenderung lebih tinggi.`); }
+      if (R && R[3]!=='logam'){ const ex=parseFloat(R[6].replace(',','.')); if (isFinite(ex)) an.push(`Dibandingkan eksperimen (${R[6]} eV), selisih celah model = ${fmt(A.gap-ex,2)} eV (${fmt(100*(A.gap-ex)/ex,0)}%). Sebagai perbandingan, DFT standar (LDA/PBE) di Quantum ESPRESSO biasanya meremehkan celah sekitar 30–100%.`); }
+    }
+    for (const q of model.dopants){
+      if (q.dZ>0) an.push(`Dopan ${q.el} menggantikan ${q.host} dan menyumbang ${q.dZ} elektron per atom (**donor**). Elektron tambahan mengisi dasar pita konduksi sehingga E_F naik ${isFinite(A.cb)?`${fmt(S.bands.ef-A.cb)} eV di atas CBM`:'ke pita konduksi'}: semikonduktor **tipe-n terdegenerasi** dengan sifat konduksi seperti logam. Pengisian pita ini menggeser tepi serapan optik ke energi lebih tinggi (efek Burstein–Moss).`);
+      else if (q.dZ<0) an.push(`Dopan ${q.el} menggantikan ${q.host} dan kekurangan ${-q.dZ} elektron per atom (**akseptor**). Terbentuk hole di puncak pita valensi dan E_F turun ${isFinite(A.vb)?`${fmt(A.vb-S.bands.ef)} eV di bawah VBM`:'ke pita valensi'}: semikonduktor **tipe-p**.`);
+      else an.push(`Dopan ${q.el} bersifat **isovalen** terhadap ${q.host}: tidak menambah pembawa muatan, tetapi mengubah potensial kristal sehingga celah dan posisi pita bergeser (rekayasa celah / paduan).`);
+    }
+    if (model.dopants.length) an.push('Konsentrasi dalam supercell kecil (beberapa persen hingga puluhan persen) jauh lebih tinggi daripada doping nyata (10¹⁶–10²¹ cm⁻³). Interaksi antardopan periodik ikut berperan, jadi hasil ini menunjukkan arah dan mekanisme, bukan nilai kuantitatif.');
+  }
+  if (S.opt){ const o=S.opt, so=o.sum, ex=EXP_OPT[formula(cr).replace(/[₀-₉]/g,'')];
+    if (o.metal) an.push(`Sifat optik logam: frekuensi plasma intrapita ħω_p = ${fmt(o.wpIntra,2)} eV. Di bawah tepi plasma${so.plasma?` (${fmt(so.plasma,1)} eV)`:''}, ε₁ negatif sehingga cahaya dipantulkan kuat (R tampak ≈ ${fmt(100*so.Rvis,0)}%), itulah kilap logam. Di atasnya material menjadi lebih tembus.`);
+    else {
+      if (A && !A.metal && so.onset) an.push(`Tepi serapan optik (α ≥ 10⁴ cm⁻¹) berada di ${fmt(so.onset,2)} eV, ${A.direct?'dekat dengan celah langsung':'jauh di atas celah tidak langsung'} ${fmt(A.gap,2)} eV. ${A.direct?'Pada celah langsung, transisi vertikal langsung tersedia di tepi pita sehingga serapan naik tajam.':'Foton hanya memicu transisi vertikal (k tetap), sedangkan transisi tidak langsung memerlukan fonon dan tidak dihitung, sehingga serapan kuat baru dimulai di celah langsung terkecil.'}`);
+      an.push(`Konstanta dielektrik frekuensi tinggi ε∞ = ${fmt(so.eps0,2)} (n ≈ ${fmt(so.n0,2)})${ex?`, dibandingkan eksperimen ε∞ = ${String(ex.eps).replace('.',',')} (n = ${String(ex.n).replace('.',',')})`:''}. ${so.AvisMax<1e4?'Material ini transparan untuk cahaya tampak; serapannya berada di ultraviolet.':so.AvisMin>1e4?'Material ini menyerap kuat seluruh cahaya tampak (tampak gelap/opak dalam lapisan tebal).':'Serapan dimulai di dalam rentang cahaya tampak, sehingga material menyerap sebagian spektrum (berwarna/gelap pada lapisan tebal).'}`);
+      if (so.peaks.length) an.push(`Puncak utama ε₂ di ${so.peaks.map(p=>fmt(p[0],2)+' eV').join(', ')} berasal dari daerah zona Brillouin tempat pita valensi dan konduksi hampir sejajar (singularitas van Hove)${[1,2,3,-3].includes(cr.ibrav)&&!model.dopants.length?', yang pada semikonduktor kubik dikenal sebagai transisi E₁ dan E₂':''}.`);
+      if (o.P.sc) an.push(`Koreksi scissor ${fmt(o.P.sc,2)} eV menggeser seluruh spektrum antarpita ke energi lebih tinggi tanpa mengubah bentuknya.`);
+    }
+    if (o.metal===false && model.dopants.some(q=>q.dZ!==0)) an.push('Untuk sistem terdoping, pembawa bebas menambah serapan Drude di inframerah dan menggeser tepi serapan (Burstein–Moss).');
+  }
+  if (S.dos){ const iEF=interpAt(S.dos.E,S.dos.I,S.dos.ef); an.push(`Konsistensi: integral DOS hingga E_F = ${fmt(iEF,2)}, cocok dengan ${ne} elektron valensi${Math.abs(iEF-ne)>0.2?' (selisih karena pelebaran Gaussian di tepi celah; kecilkan degauss atau perapat grid-k)':''}.`); }
+  an.push(`Konvergensi: basis ${Gs.list.length} gelombang bidang (${fmt(Gs.list.length/cr.atoms.length,0)} per atom). Untuk EPM, nilai di atas sekitar 30 per atom biasanya sudah konvergen dalam ~0,01 eV. Grid-k DOS menentukan kehalusan kurva.`);
+  for (const s of an) d.p(s);
+  d.p('Batasan: EPM tidak menghitung energi total, gaya, relaksasi struktur, spin, atau elektron d/f secara eksplisit. Untuk hasil kuantitatif, jalankan input pada Lampiran A dengan Quantum ESPRESSO (pw.x, bands.x, dos.x), dengan file pseudopotensial yang sesuai.',{style:'Catatan'});
+
+  // Lampiran
+  d.pageBreak();
+  d.h1('Lampiran A. Input lengkap');
+  d.h2(`A.1 ${S.prefix}.scf.in (pw.x)`); d.code($('edIn').value);
+  d.h2('A.2 K_POINTS untuk bands'); d.code($('edPath').value);
+  d.h2('A.3 K_POINTS untuk nscf'); d.code($('edNscfK').value);
+  d.h2(`A.4 ${S.prefix}.dos.in (dos.x)`); d.code($('edDosx').value);
+  if (S.logs.scf||S.logs.bands){ d.h1('Lampiran B. Cuplikan output');
+    const tail=(t,n)=>{ const L=t.replace(/\s+$/,'').split('\n'); return (L.length>n?['     ...']:[]).concat(L.slice(-n)).join('\n'); };
+    if (S.logs.scf){ d.h2(`B.1 Bagian akhir ${S.prefix}.scf.out`); d.code(tail(S.logs.scf,30)); }
+    if (S.logs.bands){ d.h2(`B.2 Bagian akhir ${S.prefix}.bands.out`); d.code(tail(S.logs.bands,22)); }
+    if (S.logs.dos){ d.h2(`B.3 Bagian akhir ${S.prefix}.dos.out`); d.code(tail(S.logs.dos,14)); }
+  }
+  d.p('File data lengkap (.out, .dos, .bands.dat.gnu, epsr/epsi.dat, CSV optik, struktur XYZ/CIF/XSF/POSCAR) dapat diunduh lewat tab Unduh → "Unduh semua (.zip)".',{i:true});
+  const blob=d.build(title); prog(1);
+  status(`Laporan ${S.prefix}_laporan.docx siap (${(blob.size/1024).toFixed(0)} KB).`,'ok');
+  await saveFile(`${S.prefix}_laporan.docx`, blob);
+  return blob;
+}
+function reportFlow(){ return guarded(async()=>{
+  if (!reparse()) throw new Error('Input pw.x belum valid: '+$('parseInfo').textContent);
+  const L=staleList(), miss=['scf','bands','dos','opt'].filter(k=>!S[k]);
+  if (L.length||miss.length){ status(`Menyiapkan laporan: menghitung ulang ${[...L,...miss].join(', ')} dengan input terbaru…`); await ensureFresh(); }
+  await makeReport(); updateStale(); }); }
+for (const id of ['btnReport','btnReport2','dlReport']) $(id).addEventListener('click',reportFlow);
+
+/* ---------- editor cepat, deteksi perubahan, penyimpanan ---------- */
+function curSig(k){
+  const base=$('edIn').value.replace(/\s+/g,' ').trim()+'|'+($('ckAutoPW').checked?'auto':$('maxPW').value);
+  if (k==='scf') return base;
+  if (k==='opt') return base+'|'+['oK','oNb','oEmax','oDe','oEta','oSc','oGam'].map(id=>$(id).value).join(',');
+  if (k==='bands') return base+'|'+$('edPath').value.replace(/\s+/g,' ')+'|'+$('nbBands').value;
+  return base+'|'+$('edNscfK').value.replace(/\s+/g,' ')+'|'+$('edDosx').value.replace(/\s+/g,' ')+'|'+$('nbDos').value;
+}
+function staleList(){ const L=[]; S.sig=S.sig||{}; for (const [k,n] of [['scf','scf'],['bands','bands'],['dos','DOS'],['opt','optik']]) if (S[k] && S.sig[k]!==curSig(k)) L.push(n); return L; }
+function updateStale(){
+  if (!window.__qReady) return;
+  const L=staleList(), bar=$('staleBar');
+  bar.hidden=!L.length;
+  if (L.length) $('staleTxt').innerHTML=`Input telah diedit sejak perhitungan terakhir. Hasil <b>${L.join(', ')}</b> yang tampil masih berasal dari input lama.`;
+  $('runBadge').hidden=!(S.scf ? S.sig.scf!==curSig('scf') : true);
+}
+async function ensureFresh(){
+  S.sig=S.sig||{};
+  const need=k=>!S[k] || S.sig[k]!==curSig(k);
+  if (need('scf')) await runSCF();
+  if (need('bands')) await runBands();
+  if (need('dos')) await runDos();
+  if (need('opt')) await runOptics();
+}
+function persistInput(){ try { localStorage.setItem('kristalab.input',$('edIn').value); } catch(e){} }
+
+/* --- penyuntingan teks pw.x secara terprogram --- */
+const reEsc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+function nmlBlock(txt,name){ const m=new RegExp(`(^|\\n)([ \\t]*&${name}\\b[\\s\\S]*?\\n[ \\t]*\\/[ \\t]*)(?=\\n|$)`,'i').exec(txt); return m? {start:m.index+m[1].length, end:m.index+m[0].length, text:m[2]} : null; }
+function fmtVal(v){ return typeof v==='string' && !/^\.(true|false)\.$/i.test(v) && isNaN(+v) ? `'${v}'` : String(v); }
+function setKey(txt, name, key, val){
+  let B=nmlBlock(txt,name);
+  if (!B){ if (val===null||val===undefined||val==='') return txt; const blk=`&${name.toUpperCase()}\n  ${key} = ${fmtVal(val)}\n/`; const at=txt.search(/\n\s*(ATOMIC_SPECIES|&ELECTRONS)/i); return at<0? txt+'\n'+blk+'\n' : txt.slice(0,at)+'\n'+blk+txt.slice(at); }
+  const re=new RegExp(`(^|[\\s,])(${reEsc(key)})\\s*=\\s*('[^']*'|"[^"]*"|[^,\\s/]+)[ \\t]*,?`,'im');
+  let t=B.text;
+  if (val===null||val===undefined||val===''){ t=t.replace(re,'$1').replace(/\n[ \t]*\n/g,'\n'); }
+  else if (re.test(t)) t=t.replace(re,(m,a,k)=>`${a}${k} = ${fmtVal(val)}${/,[ \t]*$/.test(m)?',':''}`);
+  else t=t.replace(/\n([ \t]*)\/[ \t]*$/,`\n  ${key} = ${fmtVal(val)}\n/`);
+  return txt.slice(0,B.start)+t+txt.slice(B.end);
+}
+function replaceCard(txt, name, block){
+  const re=new RegExp(`(^|\\n)${name}\\b[^\\n]*(\\n(?![ \\t]*(ATOMIC_SPECIES|ATOMIC_POSITIONS|K_POINTS|CELL_PARAMETERS|OCCUPATIONS|CONSTRAINTS|HUBBARD|&)\\b)[^\\n]*)*`,'i');
+  if (re.test(txt)) return txt.replace(re,(m,a)=>a+block.replace(/\s+$/,''));
+  return txt.replace(/\s*$/,'\n')+block.replace(/\s+$/,'')+'\n';
+}
+
+/* --- formulir --- */
+let qBusy=false;
+function qFill(){
+  if (!window.__qReady || qBusy || !S.parsed) return;
+  const p=S.parsed, sys=p.nml.system||{}, ctl=p.nml.control||{}, act=document.activeElement;
+  const set=(id,v)=>{ const e=$(id); if (e && e!==act) e.value=v??''; };
+  set('qPrefix',ctl.prefix||''); set('qIbrav',String(sys.ibrav??''));
+  const cd1=sys['celldm(1)']!==undefined? +sys['celldm(1)'] : (sys.a!==undefined? +sys.a/BOHR : (S.cr?S.cr.alat:''));
+  set('qCd1', cd1!==''? +(+cd1).toFixed(5):''); set('qA', cd1!==''? +(cd1*BOHR).toFixed(5):'');
+  set('qCd2', sys['celldm(2)']??(sys.b&&sys.a? +(sys.b/sys.a).toFixed(5):'')); set('qCd3', sys['celldm(3)']??(sys.c&&sys.a? +(sys.c/sys.a).toFixed(5):''));
+  set('qEcut',sys.ecutwfc??''); set('qOcc',String(sys.occupations||'fixed').toLowerCase().startsWith('smear')?'smearing':'fixed'); set('qDg',sys.degauss??''); set('qNbnd',sys.nbnd??'');
+  const ib=+sys.ibrav; $('qCd2w').style.display=ib===8?'':'none'; $('qCd3w').style.display=[4,6,7,8].includes(ib)?'':'none';
+  for (const id of ['qCd1','qA']) $(id).disabled = ib===0;
+  $('qCellNote').hidden = ib!==0;
+  $('qDgw').style.display = $('qOcc').value==='smearing'?'':'none';
+  const kc=p.cards.K_POINTS; const auto=kc&&kc.opt==='automatic';
+  const kw=auto? kc.lines[0].t.split(/\s+/):['','','','0','0','0'];
+  ['qK1','qK2','qK3','qS1','qS2','qS3'].forEach((id,i)=>set(id,kw[i]??'0'));
+  $('qKNote').hidden=auto;
+  const ap=p.cards.ATOMIC_POSITIONS; set('qUnit',ap?ap.opt||'alat':'crystal');
+  if (!$('qAtoms').contains(act)){
+    $('qAtoms').innerHTML=(ap?ap.lines:[]).map((l,i)=>{ const w=l.t.split(/\s+/); return `<tr><td class="n">${i+1}</td><td><input type="text" value="${w[0]}" data-c="0"></td>${[1,2,3].map(j=>`<td><input type="number" step="any" value="${w[j]}" data-c="${j}"></td>`).join('')}<td><button class="sm" data-del="${i}" title="Hapus atom">✕</button></td></tr>`; }).join('');
+  }
+  $('qAtCount').textContent = ap? `${ap.lines.length} atom` : '';
+  if (window.__defReady) markChanged();
+}
+function qApply(src){
+  let t=$('edIn').value; const v=id=>$(id).value.trim();
+  try {
+    if (src==='qPrefix') t=setKey(t,'control','prefix',v('qPrefix'));
+    if (src==='qIbrav') t=setKey(t,'system','ibrav',v('qIbrav'));
+    if (src==='qCd1'||src==='qA'){ const c=src==='qA'? +v('qA')/BOHR : +v('qCd1'); if (c>0){ t=setKey(t,'system','a',null); t=setKey(t,'system','celldm(1)',+c.toFixed(6)); } if (src==='qA') $('qCd1').value=+c.toFixed(5); else $('qA').value=+(c*BOHR).toFixed(5); }
+    if (src==='qCd2'){ t=setKey(t,'system','b',null); t=setKey(t,'system','celldm(2)',v('qCd2')); }
+    if (src==='qCd3'){ t=setKey(t,'system','c',null); t=setKey(t,'system','celldm(3)',v('qCd3')); }
+    if (src==='qEcut') t=setKey(t,'system','ecutwfc',v('qEcut'));
+    if (src==='qNbnd') t=setKey(t,'system','nbnd',v('qNbnd')||null);
+    if (src==='qOcc'||src==='qDg'){ const sm=$('qOcc').value==='smearing'; t=setKey(t,'system','occupations',sm?'smearing':'fixed');
+      t=setKey(t,'system','smearing',sm?'gaussian':null); t=setKey(t,'system','degauss',sm?(v('qDg')||'0.02'):null); if (sm && !v('qDg')) $('qDg').value='0.02'; $('qDgw').style.display=sm?'':'none'; }
+    if (/^q[KS][123]$/.test(src)){ const k=['qK1','qK2','qK3'].map(id=>Math.max(1,parseInt(v(id))||1)), s=['qS1','qS2','qS3'].map(id=>parseInt(v(id))?1:0); t=replaceCard(t,'K_POINTS',`K_POINTS automatic\n  ${k.join(' ')} ${s.join(' ')}`); }
+    if (src==='atoms'||src==='qUnit'){
+      const rows=[...$('qAtoms').querySelectorAll('tr')].map(tr=>[...tr.querySelectorAll('input')].map(i=>i.value.trim())).filter(r=>r[0]);
+      const unit=$('qUnit').value;
+      t=replaceCard(t,'ATOMIC_POSITIONS',`ATOMIC_POSITIONS ${unit}\n`+rows.map(r=>`  ${r[0].padEnd(3)} ${[1,2,3].map(j=>fx(+r[j]||0,11,6)).join(' ')}`).join('\n'));
+      // spesies menyesuaikan label atom
+      const labels=[...new Set(rows.map(r=>r[0]))]; const old={}; const pc=S.parsed&&S.parsed.cards.ATOMIC_SPECIES; if (pc) for (const l of pc.lines){ const w=l.t.split(/\s+/); old[w[0]]=l.t; }
+      const spl=labels.map(l=> old[l] ? '  '+old[l] : (elemOf(l)? `  ${l.padEnd(3)} ${String(ELEM[elemOf(l)][0]).padStart(8)}  ${elemOf(l)}.pbe-n-kjpaw_psl.1.0.0.UPF` : `  ${l}  1.0  ${l}.UPF`));
+      t=replaceCard(t,'ATOMIC_SPECIES','ATOMIC_SPECIES\n'+spl.join('\n'));
+      t=setKey(t,'system','nat',rows.length); t=setKey(t,'system','ntyp',labels.length);
+    }
+  } catch(e){ status('✖ Gagal menerapkan editan: '+e.message,'err'); return; }
+  qBusy=true; $('edIn').value=t; qBusy=false;
+  reparse(); updateStale(); persistInput();
+}
+(function bindQ(){
+  for (const id of ['qPrefix','qIbrav','qCd1','qA','qCd2','qCd3','qEcut','qNbnd','qOcc','qDg','qK1','qK2','qK3','qS1','qS2','qS3','qUnit'])
+    $(id).addEventListener('change',()=>qApply(id));
+  $('qAtoms').addEventListener('change',()=>qApply('atoms'));
+  $('qAtoms').addEventListener('click',e=>{ const b=e.target.closest('[data-del]'); if (!b) return; b.closest('tr').remove(); qApply('atoms'); });
+  $('qAdd').addEventListener('click',()=>{ const tr=document.createElement('tr'); const last=[...$('qAtoms').querySelectorAll('tr')].pop(); const lab=last?last.querySelector('input').value:'Si';
+    tr.innerHTML=`<td class="n">+</td><td><input type="text" value="${lab}" data-c="0"></td>${[1,2,3].map(j=>`<td><input type="number" step="any" value="0.5" data-c="${j}"></td>`).join('')}<td><button class="sm" data-del="x">✕</button></td>`; $('qAtoms').appendChild(tr); qApply('atoms'); });
+  const watch=['edIn','edPath','edNscfK','edDosx','nbBands','nbDos','maxPW','ckAutoPW'];
+  for (const id of watch) $(id).addEventListener('input',()=>{ updateStale(); if (id==='edIn') persistInput(); });
+  $('btnRerun').addEventListener('click',()=>guarded(async()=>{ await ensureFresh(); status('Semua hasil sudah diperbarui sesuai input terakhir.','ok'); showTab('tabsR','vBands'); }));
+})();
+window.__qReady=true;
+// sinkron tanda tangan hasil yang sudah ada (data contoh)
+S.sig={}; if (S.scf) S.sig.scf=curSig('scf'); if (S.bands) S.sig.bands=curSig('bands'); if (S.dos) S.sig.dos=curSig('dos');
+// pulihkan editan terakhir dari sesi sebelumnya
+try { const saved=SAVED_INPUT; if (saved && DEMO && saved.trim()!==DEMO.input.trim()){ sel.value=''; loadText(saved,'Input tersimpan dari sesi sebelumnya'); status('Input terakhir Anda dipulihkan dari kunjungan sebelumnya. Tekan ▶ Jalankan semua untuk menghitung ulang, atau pilih contoh di menu kanan atas.','ok'); } } catch(e){}
+qFill(); updateStale();
+
+/* ---------- sifat optik (UI) ---------- */
+
+// Sifat optik dari transisi antarpita vertikal dengan elemen matriks momentum <c|p|v> (RPA tanpa efek lokal) + Drude intrapita
+const HA=27.211386;
+function computeOptics(data, o){
+  // data: [{w, E:[nb] eV, P:Float64Array nb*nb}] ; o:{omegaBohr3, ef, sigmaOcc(eV), metal, nocc, eta(eV), emax, de, scissor, gamma(eV), drude}
+  const E=[]; for (let x=o.de; x<=o.emax+1e-9; x+=o.de) E.push(+x.toFixed(6));
+  const N=E.length, S2=new Float64Array(N), cG=1/(o.eta*Math.sqrt(Math.PI));
+  const occ=e=> o.metal ? 0.5*erfc((e-o.ef)/o.sigmaOcc) : null;
+  let wp2=0; const sOcc=o.sigmaOcc;
+  for (const k of data){
+    const nb=k.E.length, f=k.E.map((e,i)=> o.metal? occ(e) : (i<o.nocc?1:0));
+    for (let v=0;v<nb;v++){
+      if (o.metal){ const x=(k.E[v]-o.ef)/sOcc; if (x*x<40) wp2 += k.w*2*k.P[v*nb+v]*Math.exp(-x*x)/(sOcc*Math.sqrt(Math.PI))*HA; }
+      if (f[v]<1e-5) continue;
+      for (let c=v+1;c<nb;c++){
+        const wt=f[v]*(1-f[c]); if (wt<1e-5) continue;
+        let dE=k.E[c]-k.E[v]; if (dE<1e-4) continue; if (c>=o.nocc) dE+=o.scissor;
+        const amp=k.w*2*wt*k.P[v*nb+c];
+        const i0=Math.max(0,Math.floor((dE-5*o.eta)/o.de)-1), i1=Math.min(N-1,Math.ceil((dE+5*o.eta)/o.de));
+        for (let i=i0;i<=i1;i++){ const u=(E[i]-dE)/o.eta; S2[i]+=amp*cG*Math.exp(-u*u); }
+      }
+    }
+  }
+  const e2=new Float64Array(N), e1=new Float64Array(N);
+  for (let i=0;i<N;i++){ const w=E[i]/HA; e2[i]=4*Math.PI*Math.PI/(o.omegaBohr3*w*w)*S2[i]*HA; }
+  for (let i=0;i<N;i++){ let s=0; for (let j=(i%2===0?1:0); j<N; j+=2){ s+=E[j]*e2[j]/(E[j]*E[j]-E[i]*E[i]); } e1[i]=1+(2/Math.PI)*2*o.de*s; }
+  let e1_0=1; for (let i=0;i<N;i++) e1_0+=(2/Math.PI)*e2[i]/E[i]*o.de;
+  let fsum=0; for (let i=0;i<N;i++) fsum+=E[i]*e2[i]*o.de;   // eV²
+  const wpIntra = o.metal ? Math.sqrt(Math.max(0,4*Math.PI/o.omegaBohr3*wp2))*HA : 0;
+  const e1i=Array.from(e1), e2i=Array.from(e2);
+  if (wpIntra>0 && o.drude){ const g=o.gamma; for (let i=0;i<N;i++){ const w=E[i]; e1[i]+=-wpIntra*wpIntra/(w*w+g*g); e2[i]+=wpIntra*wpIntra*g/(w*(w*w+g*g)); } }
+  const n=[], kk=[], al=[], R=[];
+  for (let i=0;i<N;i++){ const m=Math.hypot(e1[i],e2[i]); const nn=Math.sqrt(Math.max(0,(m+e1[i])/2)), k_=Math.sqrt(Math.max(0,(m-e1[i])/2));
+    n.push(nn); kk.push(k_); al.push(4*Math.PI*k_*E[i]/1.23984e-4); R.push(((nn-1)**2+k_*k_)/((nn+1)**2+k_*k_)); }
+  return {E, e1:Array.from(e1), e2:Array.from(e2), e1inter:e1i, e2inter:e2i, n, k:kk, alpha:al, R, e1_0, wpIntra, fsum};
+}
+
+const EXP_OPT={Si:{eps:11.7,n:3.42},Ge:{eps:16.0,n:4.0},GaAs:{eps:10.9,n:3.3},InSb:{eps:15.7,n:3.96},ZnSe:{eps:5.9,n:2.43},ZnO:{eps:3.7,n:1.93}};
+function optNb(cr){ const v=+$('oNb').value; return v>0? v : Math.ceil(nocc(cr).nelec/2)+Math.max(12,Math.round(cr.atoms.length*1.5)); }
+function optParams(){ return {grid:$('oK').value.trim(), nb:$('oNb').value, emax:+$('oEmax').value||20, de:+$('oDe').value||0.02, eta:+$('oEta').value||0.1, sc:+$('oSc').value||0, gam:+$('oGam').value||0.1}; }
+async function runOptics(){
+  if (!reparse()) throw new Error('Input pw.x belum valid.');
+  const cr=S.cr, sys=S.parsed.nml.system||{}, P=optParams();
+  const g=P.grid.split(/\s+/).map(Number); if (g.length<3||g.slice(0,3).some(x=>!(x>0))) throw new Error('Grid-k optik harus berupa tiga bilangan bulat, misalnya "10 10 10".');
+  const kp=mpGrid(cr,g.slice(0,3),[0,0,0]);
+  const nb=optNb(cr);
+  const model=buildModel(cr), Gs=buildGlist(cr,+sys.ecutwfc||25,effMaxPW(cr)), H=buildHam(cr,model,Gs.list);
+  if (nb>H.n) throw new Error(`nbnd optik (${nb}) melebihi jumlah gelombang bidang (${H.n}).`);
+  const data=[]; const t0=performance.now(); let last=t0;
+  for (let i=0;i<kp.length;i++){
+    if (S.stop) throw new Error('Dihentikan oleh pengguna.');
+    data.push({w:kp[i].w, ...solveKP(H,kp[i].cart,nb)});
+    const now=performance.now(); if (now-last>40){ prog((i+1)/kp.length); status(`optik: titik-k ${i+1}/${kp.length} · ${H.n} PW · ${nb} pita`); last=now; await tick(); }
+  }
+  const ne=nocc(cr).nelec, dq=model.dopants.reduce((s,d)=>s+d.dZ*d.count,0), nH=Math.round((ne-dq)/2);
+  const metal=String(sys.occupations||'fixed').toLowerCase().startsWith('smear');
+  const sig=(+sys.degauss||0.01)*RY;
+  const ef = metal ? fermiSmear(data.map(d=>d.E),data.map(d=>d.w),ne,sig) : Math.max(...data.map(d=>d.E[Math.ceil(ne/2)-1]));
+  status('optik: menghitung ε(ω) dan Kramers–Kronig…'); await tick();
+  const o=computeOptics(data,{omegaBohr3:cr.omega, ef, sigmaOcc:sig, metal, nocc:metal?nH:Math.ceil(ne/2), eta:P.eta, emax:P.emax, de:P.de, scissor:P.sc, gamma:P.gam, drude:true});
+  const time=(performance.now()-t0)/1000;
+  S.opt={...o, P, nb, nk:kp.length, npw:H.n, metal, ef, time, label:formula(cr)};
+  S.sig=S.sig||{}; S.sig.opt=curSig('opt');
+  S.opt.sum=optSummary(S.opt);
+  renderOptSummary(); showTab('tabsR','vOpt'); drawOpt(); refreshDownloads(); updateStale();
+  status(`Sifat optik selesai: ${kp.length} titik-k, ${nb} pita, ${time.toFixed(1)} s.`,'ok');
+}
+function optSummary(o){
+  const E=o.E, at=(arr,e)=>{ let i=E.findIndex(x=>x>=e); if (i<0) i=E.length-1; return arr[i]; };
+  const onset=o.metal? null : E.find((e,i)=>o.alpha[i]>=1e4);
+  const pk=[]; for (let i=2;i<E.length-2;i++) if (o.e2inter[i]>o.e2inter[i-1]&&o.e2inter[i]>=o.e2inter[i+1]&&o.e2inter[i]>0.3*Math.max(...o.e2inter)) pk.push([E[i],o.e2inter[i]]);
+  pk.sort((a,b)=>b[1]-a[1]);
+  const vis=E.map((e,i)=>[e,i]).filter(([e])=>e>=1.65&&e<=3.26);
+  const vis2=vis.filter(([e])=>e<=3.1);
+  const Rv=vis.reduce((s,[e,i])=>s+o.R[i],0)/(vis.length||1), Amax=Math.max(0,...vis2.map(([e,i])=>o.alpha[i])), Amin=Math.min(...vis2.map(([e,i])=>o.alpha[i]));
+  let plasma=null; if (o.metal) for (let i=1;i<E.length;i++) if (o.e1[i-1]<0&&o.e1[i]>=0) plasma=E[i];   // penyeberangan terakhir = tepi plasma tersaring
+  return {eps0:o.metal?null:o.e1_0, n0:o.metal?null:Math.sqrt(o.e1_0), onset, lam:onset?1239.84/onset:null, peaks:pk.slice(0,3).sort((a,b)=>a[0]-b[0]), Rvis:Rv, AvisMax:Amax, AvisMin:Amin, plasma, n2:at(o.n,2.0), k2:at(o.k,2.0), R2:at(o.R,2.0)};
+}
+function renderOptSummary(){
+  const o=S.opt; if (!o) return; const s=o.sum, f=(v,d=3)=>v==null||!isFinite(v)?'—':(+v).toFixed(d);
+  const ex=EXP_OPT[formula(S.cr).replace(/[₀-₉]/g,'')];
+  const rows=[
+    ['Sistem', `${o.label} · ${o.nk} titik-k · ${o.nb} pita · ${o.npw} PW`],
+    ...(o.metal?[['Frekuensi plasma intrapita ħω<sub>p</sub>',`${f(o.wpIntra,2)} eV`],['Tepi plasma (ε₁ = 0)',s.plasma?`${f(s.plasma,2)} eV (${f(1239.84/s.plasma,0)} nm)`:'—']]:
+      [['Konstanta dielektrik ε∞ = ε₁(0)',`${f(s.eps0,2)}${ex?` (eksperimen ${ex.eps})`:''}`],['Indeks bias statik n(0)',`${f(s.n0,3)}${ex?` (eksperimen ${ex.n})`:''}`]]),
+    ['Tepi serapan (α ≥ 10⁴ cm⁻¹)', o.metal?'— (logam: menyerap sejak ω → 0 melalui elektron bebas)': s.onset?`${f(s.onset,2)} eV → λ ≈ ${f(s.lam,0)} nm`:'tidak tercapai dalam rentang'],
+    ['Puncak ε₂ antarpita', s.peaks.length? s.peaks.map(p=>`${f(p[0],2)} eV (ε₂ = ${f(p[1],1)})`).join('; '):'—'],
+    ['Pada 2,0 eV (620 nm)', `n = ${f(s.n2,3)}, k = ${f(s.k2,3)}, R = ${f(100*s.R2,1)}%`],
+    ['Cahaya tampak (400–750 nm)', `R rata-rata = ${f(100*s.Rvis,1)}% · α = ${s.AvisMin.toExponential(1)} – ${s.AvisMax.toExponential(1)} cm⁻¹ → ${o.metal?'memantul kuat (kilap logam)':s.AvisMax<1e4?'transparan':s.AvisMin>1e4?'menyerap kuat (opak)':'menyerap sebagian'}`],
+    ['Parameter', `η = ${o.P.eta} eV · scissor = ${o.P.sc} eV · γ = ${o.P.gam} eV · ΔE = ${o.P.de} eV`]
+  ];
+  $('oSum').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+}
+const PLOTO={};
+function drawOpt(hoverE){
+  const cv=$('cvOpt'); if (!cv.offsetParent) return;
+  const {ctx,w,h}=setupCanvas(cv), th=themeC(); ctx.fillStyle=th.bg; ctx.fillRect(0,0,w,h);
+  const o=S.opt; if (!o){ ctx.fillStyle=th.mu; ctx.font='14px system-ui'; ctx.fillText('Hitung sifat optik di tab 🌈 Optik (panel kiri).',24,34); return; }
+  const view=$('oView').value, nm=$('oX').value==='nm';
+  const panels = view==='all' ? ['eps','nk','alpha','R'] : [view];
+  const cols = panels.length>1?2:1, rows=Math.ceil(panels.length/cols);
+  const pw=w/cols, ph=h/rows; PLOTO.panels=[];
+  const lamMin=Math.max(1239.84/o.E[o.E.length-1],150), lamMax=Math.min(2500,1239.84/o.E[0]);
+  const xr = nm? [lamMin,Math.min(lamMax,1600)] : [0,o.E[o.E.length-1]];
+  const xOf=e=> nm? 1239.84/e : e;
+  const C={e1:th.band,e2:th.ef,n:th.band,k:th.ef,alpha:'#8250df',R:'#1a7f37'};
+  panels.forEach((pn,idx)=>{
+    const r={x:(idx%cols)*pw, y:Math.floor(idx/cols)*ph, w:pw, h:ph};
+    const m={l:62,r:14,t:26,b:40}, X0=r.x+m.l, Y0=r.y+m.t, W=r.w-m.l-m.r, Hh=r.h-m.t-m.b;
+    let series, ylab, log=false, title;
+    if (pn==='eps'){ series=[{y:o.e1,c:C.e1,l:'ε₁'},{y:o.e2,c:C.e2,l:'ε₂'}]; ylab='ε'; title='Fungsi dielektrik'; }
+    else if (pn==='nk'){ series=[{y:o.n,c:C.n,l:'n'},{y:o.k,c:C.k,l:'k'}]; ylab='n, k'; title='Indeks bias kompleks'; }
+    else if (pn==='alpha'){ series=[{y:o.alpha,c:C.alpha,l:'α'}]; ylab='α (cm⁻¹)'; log=true; title='Koefisien serapan'; }
+    else { series=[{y:o.R.map(v=>100*v),c:C.R,l:'R'}]; ylab='R (%)'; title='Reflektivitas'; }
+    const inX=i=>{ const x=xOf(o.E[i]); return x>=xr[0]&&x<=xr[1]; };
+    let y0=Infinity,y1=-Infinity; for (const s of series) s.y.forEach((v,i)=>{ if (!inX(i)) return; const vv=log?Math.log10(Math.max(v,1)):v; y0=Math.min(y0,vv); y1=Math.max(y1,vv); });
+    if (pn==='eps'){ const lim=Math.max(...o.e2.map((v,i)=>inX(i)?v:0))*1.6; y1=Math.min(y1,lim); y0=Math.max(y0,-lim); }
+    if (pn==='R'){ y0=0; y1=100; } if (pn==='nk') y0=0; if (log){ y0=Math.max(1,Math.floor(y0)); y1=Math.ceil(y1); if (y1<=y0) y1=y0+1; }
+    if (!(y1>y0)){ y1=y0+1; } const pad=(y1-y0)*0.05; if (!log && pn!=='R'){ y1+=pad; if (pn!=='nk') y0-=pad; }
+    const Xp=x=>X0+(x-xr[0])/(xr[1]-xr[0])*W, Yp=v=>Y0+(1-((log?Math.log10(Math.max(v,1)):v)-y0)/(y1-y0))*Hh;
+    PLOTO.panels.push({X0,Y0,W,Hh,xr});
+    // visible band
+    if ($('oVis').checked){ const a=nm?380:1.65, b=nm?750:3.26; const xa=Xp(Math.max(xr[0],Math.min(a,b))), xb=Xp(Math.min(xr[1],Math.max(a,b)));
+      if (xb>xa){ const gr=ctx.createLinearGradient(Xp(nm?380:3.26),0,Xp(nm?750:1.65),0); ['#7f00ff','#0000ff','#00a0ff','#00c000','#e0e000','#ff8000','#ff0000'].forEach((c,i,A)=>gr.addColorStop(i/(A.length-1),c));
+        ctx.globalAlpha=0.10; ctx.fillStyle=gr; ctx.fillRect(xa,Y0,xb-xa,Hh); ctx.globalAlpha=0.9; ctx.fillRect(xa,Y0+Hh-5,xb-xa,5); ctx.globalAlpha=1; } }
+    // grid & ticks
+    ctx.font='11px system-ui'; ctx.strokeStyle=th.grid; ctx.fillStyle=th.mu; ctx.lineWidth=1;
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    const yt = log? Array.from({length:y1-y0+1},(_,i)=>y0+i) : niceTicks(y0,y1,5);
+    for (const t of yt){ const yy=Y0+(1-(t-y0)/(y1-y0))*Hh; ctx.beginPath(); ctx.moveTo(X0,yy); ctx.lineTo(X0+W,yy); ctx.stroke(); ctx.fillText(log?`10^${t}`:(+t.toPrecision(3)),X0-5,yy); }
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    for (const t of niceTicks(xr[0],xr[1],nm?6:8)){ const xx=Xp(t); ctx.beginPath(); ctx.moveTo(xx,Y0); ctx.lineTo(xx,Y0+Hh); ctx.stroke(); ctx.fillText(t,xx,Y0+Hh+4); }
+    if (!log && y0<0 && y1>0){ ctx.strokeStyle=th.mu; ctx.beginPath(); ctx.moveTo(X0,Yp(0)); ctx.lineTo(X0+W,Yp(0)); ctx.stroke(); }
+    ctx.fillStyle=th.fg; ctx.fillText(nm?'panjang gelombang (nm)':'energi foton (eV)',X0+W/2,Y0+Hh+20);
+    ctx.save(); ctx.translate(r.x+14,Y0+Hh/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillText(ylab,0,0); ctx.restore();
+    ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.font='bold 12px system-ui'; ctx.fillText(title,X0,Y0-6);
+    // curves
+    ctx.save(); ctx.beginPath(); ctx.rect(X0,Y0,W,Hh); ctx.clip();
+    for (const s of series){ ctx.strokeStyle=s.c; ctx.lineWidth=1.6; ctx.beginPath(); let st=false;
+      for (let i=0;i<o.E.length;i++){ const x=xOf(o.E[i]); if (x<xr[0]-1e-9||x>xr[1]+1e-9){ st=false; continue; } const X_=Xp(x), Y_=Yp(s.y[i]); if (!st){ ctx.moveTo(X_,Y_); st=true; } else ctx.lineTo(X_,Y_); } ctx.stroke(); }
+    if (hoverE){ const xx=Xp(xOf(hoverE)); ctx.strokeStyle=th.mu; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(xx,Y0); ctx.lineTo(xx,Y0+Hh); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.restore(); ctx.strokeStyle=th.mu; ctx.strokeRect(X0,Y0,W,Hh);
+    // legend
+    ctx.font='12px system-ui'; ctx.textBaseline='middle'; let lx=X0+W-10;
+    for (const s of series.slice().reverse()){ const tw=ctx.measureText(s.l).width; lx-=tw+30; ctx.strokeStyle=s.c; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(lx,Y0+12); ctx.lineTo(lx+18,Y0+12); ctx.stroke(); ctx.fillStyle=th.fg; ctx.textAlign='left'; ctx.fillText(s.l,lx+22,Y0+12); }
+  });
+}
+(function bindOpt(){
+  $('btnOpt').addEventListener('click',()=>guarded(runOptics));
+  for (const id of ['oView','oX','oVis']) $(id).addEventListener('input',()=>drawOpt());
+  for (const id of ['oK','oNb','oEmax','oDe','oEta','oSc','oGam']) $(id).addEventListener('input',updateStale);
+  const cv=$('cvOpt');
+  cv.addEventListener('pointermove',e=>{ const o=S.opt; if (!o||!PLOTO.panels) return; const r=cv.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top;
+    const P=PLOTO.panels.find(p=>px>=p.X0&&px<=p.X0+p.W&&py>=p.Y0&&py<=p.Y0+p.Hh); if (!P){ $('ovOpt').textContent=''; drawOpt(); return; }
+    const xv=P.xr[0]+(px-P.X0)/P.W*(P.xr[1]-P.xr[0]); const ev=$('oX').value==='nm'?1239.84/xv:xv;
+    const i=Math.max(0,Math.min(o.E.length-1,Math.round(ev/o.P.de)-1));
+    $('ovOpt').textContent=`E = ${o.E[i].toFixed(2)} eV  (λ = ${(1239.84/o.E[i]).toFixed(0)} nm)\nε₁ = ${o.e1[i].toFixed(3)}  ε₂ = ${o.e2[i].toFixed(3)}\nn = ${o.n[i].toFixed(3)}  k = ${o.k[i].toFixed(3)}\nα = ${o.alpha[i].toExponential(2)} cm⁻¹  R = ${(100*o.R[i]).toFixed(1)}%`;
+    drawOpt(o.E[i]); });
+  cv.addEventListener('pointerleave',()=>{ $('ovOpt').textContent=''; drawOpt(); });
+  $('dlOptPng').addEventListener('click',async()=>{ const b=await imgBlob(3); if (b) saveFile(`${S.prefix}.optik.png`,b); });
+})();
+IMG.push(['cvOpt','optik.png',()=>drawOpt(),'vOpt']);
+window.__optReady=true;
+ACT.optic=()=>{ showTab('tabsL','pOpt'); flash('btnOpt'); guarded(runOptics); };
+
+/* ---------- nilai default / standar ---------- */
+const DEF_VIEW={bEmin:-13,bEmax:8,ckShift:true,ckSideDos:true,dEmin:-12,dEmax:8,ckShiftD:true,ckIdos:true,rep1:1,rep2:1,rep3:1,ckBond:true,ckBnd:true,ckCell:true,ckLab:false,atSize:0.5,ckLight:true,ckSpin:false,oView:'all',oX:'ev',oVis:true};
+const DEF_OPT_STATIC={oNb:'',oEmax:20,oDe:0.02,oEta:0.1,oSc:0,oGam:0.1};
+const VIEW_LABEL={bEmin:'Pita: E − E_F minimum (eV)',bEmax:'Pita: E − E_F maksimum (eV)',ckShift:'Pita: geser E_F → 0',ckSideDos:'Pita: panel DOS',dEmin:'DOS: E − E_F minimum (eV)',dEmax:'DOS: E − E_F maksimum (eV)',ckShiftD:'DOS: geser E_F → 0',ckIdos:'DOS: kurva terintegrasi',rep1:'Struktur: ulang a',rep2:'Struktur: ulang b',rep3:'Struktur: ulang c',ckBond:'Struktur: ikatan',ckBnd:'Struktur: atom batas',ckCell:'Struktur: garis sel',ckLab:'Struktur: label',atSize:'Struktur: ukuran atom',ckLight:'Latar putih',ckSpin:'Putar otomatis',oView:'Optik: grafik ditampilkan',oX:'Optik: sumbu x',oVis:'Optik: pita cahaya tampak'};
+const getV=id=>{ const e=$(id); return e.type==='checkbox'? e.checked : (e.type==='number'||e.type==='range')? (e.value===''?'':+e.value) : e.value; };
+const setV=(id,v)=>{ const e=$(id); if (e.type==='checkbox') e.checked=!!v; else e.value=v; e.dispatchEvent(new Event('input',{bubbles:true})); };
+function snapDefaults(){
+  // dipanggil setiap kali input baru dimuat: pengaturan turunan yang berlaku saat itu menjadi default
+  const ng=(($('edNscfK').value.match(/automatic\s+(\d+)\s+(\d+)\s+(\d+)/)||[]).slice(1,4)).join(' ')||'10 10 10';
+  S.defSet={edPath:$('edPath').value, edNscfK:$('edNscfK').value, edDosx:$('edDosx').value, nbBands:$('nbBands').value, nbDos:$('nbDos').value, ckAutoPW:true, maxPW:150, oK:ng, ...DEF_OPT_STATIC};
+  try { localStorage.setItem('kristalab.defset',JSON.stringify(S.defSet)); } catch(e){}
+}
+function setOrigin(label,text){ S.origin={label,text}; try { localStorage.setItem('kristalab.origin',JSON.stringify(S.origin)); } catch(e){} }
+const SET_LABEL={edPath:'Jalur K_POINTS untuk bands',edNscfK:'K_POINTS nscf (DOS)',edDosx:'Input dos.x',nbBands:'nbnd untuk bands',nbDos:'nbnd untuk nscf/DOS',ckAutoPW:'max PW otomatis',maxPW:'max PW (manual)',oK:'Optik: grid-k',oNb:'Optik: nbnd (kosong = otomatis)',oEmax:'Optik: energi maks (eV)',oDe:'Optik: langkah ΔE (eV)',oEta:'Optik: pelebaran η (eV)',oSc:'Optik: scissor (eV)',oGam:'Optik: redaman Drude γ (eV)'};
+function cardText(txt,name){ const m=new RegExp(`(^|\\n)(${name}\\b[^\\n]*(\\n(?![ \\t]*(ATOMIC_SPECIES|ATOMIC_POSITIONS|K_POINTS|CELL_PARAMETERS|OCCUPATIONS|CONSTRAINTS|HUBBARD|&)\\b)[^\\n]*)*)`,'i').exec(txt); return m? m[2].replace(/\s+$/,'') : null; }
+function removeCard(txt,name){ const c=cardText(txt,name); return c? txt.replace(c+'\n','').replace(c,'') : txt; }
+function pwRows(){
+  if (!S.origin) return [];
+  let P0, P1; try { P0=parseQE(S.origin.text); P1=parseQE($('edIn').value); } catch(e){ return []; }
+  const rows=[];
+  for (const nml of ['control','system','electrons']){
+    const keys=[...new Set([...Object.keys(P0.nml[nml]||{}),...Object.keys(P1.nml[nml]||{})])];
+    for (const k of keys){ const a=(P0.nml[nml]||{})[k], b=(P1.nml[nml]||{})[k];
+      rows.push({grp:'pw', id:`${nml}.${k}`, label:`&${nml.toUpperCase()} · ${k}`, cur:b===undefined?'(tidak ada)':String(b), def:a===undefined?'(tidak ada)':String(a), same:String(a)===String(b),
+        apply:()=>{ let t=$('edIn').value; t=setKey(t,nml,k,a===undefined?null:a); return t; }}); }
+  }
+  for (const card of ['CELL_PARAMETERS','ATOMIC_SPECIES','ATOMIC_POSITIONS','K_POINTS']){
+    const a=cardText(S.origin.text,card), b=cardText($('edIn').value,card); if (!a&&!b) continue;
+    const norm_=x=>(x||'').replace(/\s+/g,' ').trim();
+    rows.push({grp:'pw', id:card, label:card, cur:b||'(tidak ada)', def:a||'(tidak ada)', same:norm_(a)===norm_(b), apply:()=>{ const t=$('edIn').value; return a? replaceCard(t,card,a) : removeCard(t,card); }});
+  }
+  return rows;
+}
+function setRows(){
+  const D=S.defSet||{}, rows=[];
+  for (const id of Object.keys(SET_LABEL)){ if (!(id in D)) continue; const cur=getV(id), def=D[id];
+    rows.push({grp:'set', id, label:SET_LABEL[id], cur:String(cur), def:String(def), same:String(cur).replace(/\s+/g,' ').trim()===String(def).replace(/\s+/g,' ').trim(), apply:()=>{ setV(id,def); if (['edPath','edDosx','nbBands','nbDos'].includes(id)) $(id).dataset.touched=''; return null; }}); }
+  return rows;
+}
+function viewRows(){ return Object.keys(DEF_VIEW).map(id=>{ const cur=getV(id), def=DEF_VIEW[id]; return {grp:'view', id, label:VIEW_LABEL[id], cur:String(cur), def:String(def), same:String(cur)===String(def), apply:()=>{ setV(id,def); return null; }}; }); }
+let DEFROWS=[];
+function renderDefaults(){
+  DEFROWS=[...pwRows(),...setRows(),...viewRows()];
+  const only=$('defOnly').checked, short=s=>{ s=String(s).replace(/true/,'ya ✓').replace(/false/,'tidak'); return s.length>160? s.slice(0,160)+' …' : s; };
+  const sec={pw:`Input pw.x · default = "${S.origin?S.origin.label:'—'}"`, set:'Pengaturan perhitungan (bands, nscf/dos.x, basis, optik)', view:'Tampilan grafik'};
+  let h='<table class="deft"><tr><th>Parameter</th><th>Nilai sekarang</th><th>Nilai default</th><th></th></tr>';
+  for (const g of ['pw','set','view']){
+    const R=DEFROWS.map((r,i)=>[r,i]).filter(([r])=>r.grp===g && (!only||!r.same));
+    h+=`<tr class="sec"><td colspan="4">${sec[g]} — ${DEFROWS.filter(r=>r.grp===g&&!r.same).length} berbeda</td></tr>`;
+    for (const [r,i] of R) h+=`<tr class="${r.same?'':'chg'}"><td>${X(r.label)}</td><td class="v">${X(short(r.cur))}</td><td class="v">${X(short(r.def))}</td><td>${r.same?'<span class="ok">✓ default</span>':`<button class="sm" data-defi="${i}">↺ pakai default</button>`}</td></tr>`;
+  }
+  $('defBody').innerHTML=h+'</table>';
+  const nd=DEFROWS.filter(r=>!r.same).length; $('defCount').textContent= nd? `${nd} parameter berbeda dari default.` : 'Semua parameter sudah bernilai default.';
+  $('defOrigin').textContent=`Default input pw.x diambil dari: ${S.origin?S.origin.label:'—'}. Default pengaturan mengikuti nilai saat input itu dimuat.`;
+}
+function applyRows(rows){
+  let changedText=false;
+  for (const r of rows){ if (r.same) continue; const t=r.apply(); if (t!==null && t!==undefined){ $('edIn').value=t; changedText=true; } }
+  if (changedText){ reparse(); persistInput(); }
+  scene=null; redrawAll(); updateStale(); qFill(); renderDefaults();
+}
+function openDefaults(){ renderDefaults(); $('defModal').hidden=false; }
+(function bindDef(){
+  for (const id of ['btnDefaults','btnDefaults2']) $(id).addEventListener('click',openDefaults);
+  $('defClose').addEventListener('click',()=>{ $('defModal').hidden=true; });
+  $('defModal').addEventListener('click',e=>{ if (e.target.id==='defModal') $('defModal').hidden=true; });
+  $('defOnly').addEventListener('input',renderDefaults);
+  $('defBody').addEventListener('click',e=>{ const b=e.target.closest('[data-defi]'); if (!b) return; applyRows([DEFROWS[+b.dataset.defi]]); toast('Dikembalikan ke default: '+DEFROWS[+b.dataset.defi]?.label); });
+  $('defAll').addEventListener('click',()=>{ applyRows(DEFROWS); toast('Semua parameter dikembalikan ke default.'); });
+  $('defPw').addEventListener('click',()=>{ if (S.origin){ $('edIn').value=S.origin.text; reparse(); persistInput(); updateStale(); qFill(); renderDefaults(); toast('Input pw.x dikembalikan ke default.'); } });
+  $('defSet').addEventListener('click',()=>{ applyRows(setRows()); toast('Pengaturan perhitungan dan optik dikembalikan ke default.'); });
+  $('defView').addEventListener('click',()=>{ applyRows(viewRows()); toast('Pengaturan tampilan dikembalikan ke default.'); });
+  $('defFactory').addEventListener('click',()=>{ for (const r of viewRows()) r.apply(); for (const [k,v] of Object.entries(DEF_OPT_STATIC)) setV(k,v); setV('ckAutoPW',true); setV('maxPW',150); loadDemo(); renderDefaults(); toast('Setelan pabrik dipulihkan (contoh Si + data contoh).'); });
+  document.addEventListener('keydown',e=>{ if (e.key==='Escape') $('defModal').hidden=true; });
+})();
+ACT.defaults=openDefaults;
+function markChanged(){
+  if (!S.origin) return; let P0; try { P0=parseQE(S.origin.text); } catch(e){ return; } const p=S.parsed; if (!p) return;
+  const M={qPrefix:['control','prefix'],qIbrav:['system','ibrav'],qCd1:['system','celldm(1)'],qCd2:['system','celldm(2)'],qCd3:['system','celldm(3)'],qEcut:['system','ecutwfc'],qNbnd:['system','nbnd'],qOcc:['system','occupations'],qDg:['system','degauss']};
+  for (const [id,[n,k]] of Object.entries(M)){ const a=(P0.nml[n]||{})[k], b=(p.nml[n]||{})[k]; const ch=String(a??'')!==String(b??''); $(id).classList.toggle('chg',ch); $(id).title= ch? `default: ${a??'(tidak ada)'}` : 'sama dengan default'; }
+  const nz=x=>(x||'').replace(/\s+/g,' ').trim();
+  const kch=nz(cardText(S.origin.text,'K_POINTS'))!==nz(cardText($('edIn').value,'K_POINTS')); for (const id of ['qK1','qK2','qK3','qS1','qS2','qS3']) $(id).classList.toggle('chg',kch);
+  const ach=nz(cardText(S.origin.text,'ATOMIC_POSITIONS'))!==nz(cardText($('edIn').value,'ATOMIC_POSITIONS')); for (const i of $('qAtoms').querySelectorAll('input')) i.classList.toggle('chg',ach); $('qUnit').classList.toggle('chg',ach);
+}
+// default awal sesi
+try { const o=JSON.parse(localStorage.getItem('kristalab.origin')||'null'), ds=JSON.parse(localStorage.getItem('kristalab.defset')||'null');
+  if (o && SAVED_INPUT && SAVED_INPUT.trim()!==(DEMO?DEMO.input.trim():'')){ S.origin=o; if (ds) S.defSet=ds; } } catch(e){}
+window.__defReady=true;
+if (!S.origin) setOrigin(SAVED_INPUT && DEMO && SAVED_INPUT.trim()!==DEMO.input.trim() ? 'Input tersimpan dari sesi sebelumnya' : 'Data contoh Si', $('edIn').value);
+if (!S.defSet) snapDefaults();
+qFill();
 
 </script>
 </body>
